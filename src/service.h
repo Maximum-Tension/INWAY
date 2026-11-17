@@ -26,20 +26,26 @@
 |*| SERVICE_REMOVE_OLD() TAKES OUT THE OLD CONNECT TOOL (SERVICE CONNECTRD,  |*|
 |*| ITS FIREWALL RULE AND "C:\PROGRAM FILES\CONNECT"). INWAY USES ANOTHER    |*|
 |*| PORT, SERVICE NAME AND FOLDER, SO BOTH CAN RUN WHILE A PC IS MOVED OVER. |*|
+|*| INSTALL, UNINSTALL AND REMOVE_OLD RETURN SVC_DONE OR THE REASON IT DID   |*|
+|*| NOT WORK. THE ADMIN COPY STARTED BY SERVICE_RELAUNCH_AS_ADMIN() RUNS     |*|
+|*| HIDDEN AND HANDS THAT NUMBER BACK AS ITS EXIT CODE: A NORMAL PROGRAM     |*|
+|*| (LIKE INWAY CONTROLLED FROM ANOTHER PC) CAN NOT CLICK OR TYPE INTO AN    |*|
+|*| ADMIN WINDOW, SO THE RESULT IS SHOWN IN THE NORMAL WINDOW INSTEAD.       |*|
 |*|__________________________________________________________________________|*|
 |*'..........................................................................'*|
 |* :                                                                        : *|
 |* :   v [C LANGUAGE]                                                       : *|
 |* :  1|                                                                    : *|
-|* :  2| int  SERVICE_RUN(const char *CODE);                                : *|
+|* :  2| int  SERVICE_RUN(const char *CODE, int NO_UPDATE);                 : *|
 |* :  3| int  SERVICE_WORKER(void);                                         : *|
 |* :  4| void SERVICE_READ_INFO(void);                                      : *|
 |* :  5| int  SERVICE_IS_ADMIN(void);                                       : *|
 |* :  6| int  SERVICE_RELAUNCH_AS_ADMIN(const char *PARAMETERS);            : *|
-|* :  7| int  SERVICE_INSTALL(const char *CODE);                            : *|
-|* :  8| int  SERVICE_UNINSTALL(void);                                      : *|
-|* :  9| int  SERVICE_REMOVE_OLD(void);                                     : *|
-|* : 10|                                                                    : *|
+|* :  7| int  SERVICE_INSTALL(const char *CODE, int NO_UPDATE);             : *|
+|* :  8| int  SERVICE_SWAP(void);                                           : *|
+|* :  9| int  SERVICE_UNINSTALL(void);                                      : *|
+|* : 10| int  SERVICE_REMOVE_OLD(void);                                     : *|
+|* : 11|                                                                    : *|
 |* :                                                                        : *|
 |* '........................................................................' *|
 \******************************************************************************/
@@ -47,15 +53,23 @@
 #ifndef SERVICE_H
 #define SERVICE_H
 
+#define SVC_DONE		0
+#define SVC_NO_SCM		2	/* NO RIGHTS TO THE SERVICE LIST */
+#define SVC_COPY_FAILED	3
+#define SVC_CREATE_FAILED	4	/* THE WINDOWS ERROR IS IN THE BITS ABOVE 8 */
+#define SVC_NOT_STARTED	5
+#define SVC_NO_PERMISSION	6	/* "NO" WAS CLICKED ON THE WINDOWS PROMPT */
+
 extern int	G_SVC_RUNNING;	/* SEEN FROM A NORMAL COPY: IS THE SERVICE ON? */
 extern char	G_SVC_CODE[8];	/* THE SERVICE'S CODE, "" WHEN UNKNOWN */
 
-extern int	SERVICE_RUN(const char *CODE);
+extern int	SERVICE_RUN(const char *CODE, int NO_UPDATE);
 extern int	SERVICE_WORKER(void);
 extern void	SERVICE_READ_INFO(void);
 extern int	SERVICE_IS_ADMIN(void);
 extern int	SERVICE_RELAUNCH_AS_ADMIN(const char *PARAMETERS);
-extern int	SERVICE_INSTALL(const char *CODE);
+extern int	SERVICE_INSTALL(const char *CODE, int NO_UPDATE);
+extern int	SERVICE_SWAP(void);
 extern int	SERVICE_UNINSTALL(void);
 extern int	SERVICE_REMOVE_OLD(void);
 

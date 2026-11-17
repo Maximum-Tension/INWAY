@@ -30,6 +30,10 @@
 |*| TO CLOSE, DELETES IT, MOVES ITSELF TO THAT PATH, DELETES THE NOTE AND    |*|
 |*| GOES ON WITH THE SAME COMMAND LINE.                                      |*|
 |*| NO NETWORK, A RATE LIMIT OR ANY ERROR: INWAY JUST STARTS AS IT IS.       |*|
+|*| SERVERS (THE BACKGROUND SERVICE) UPDATE THEMSELVES WITH                  |*|
+|*| UPDATE_SERVICE_LOOP(): A CHECK EVERY 6 HOURS, AND THE SWAP ONLY WHEN     |*|
+|*| NOBODY IS CONNECTED. "-INSTALL -P CODE -NOUPDATE" TURNS THAT OFF FOR ONE |*|
+|*| SERVER. WHAT HAPPENS IS WRITTEN TO INWAY.LOG NEXT TO THE SERVICE'S EXE.  |*|
 |*|__________________________________________________________________________|*|
 |*'..........................................................................'*|
 |* :                                                                        : *|
@@ -37,7 +41,9 @@
 |* : 1|                                                                     : *|
 |* : 2| void UPDATE_CHECK(void);                                            : *|
 |* : 3| void UPDATE_FINISH(void);                                           : *|
-|* : 4|                                                                     : *|
+|* : 4| void UPDATE_SERVICE_LOOP(HANDLE STOP);                              : *|
+|* : 5| void UPDATE_LOG(const char *FORMAT, ...);                           : *|
+|* : 6|                                                                     : *|
 |* :                                                                        : *|
 |* '........................................................................' *|
 \******************************************************************************/
@@ -50,5 +56,7 @@
 
 extern void	UPDATE_CHECK(void);
 extern void	UPDATE_FINISH(void);
+extern void	UPDATE_SERVICE_LOOP(HANDLE STOP);
+extern void	UPDATE_LOG(const char *FORMAT, ...);
 
 #endif /* !UPDATE_H */

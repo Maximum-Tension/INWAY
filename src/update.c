@@ -40,7 +40,11 @@
  */
 #include <bcrypt.h>
 /******* """"""""""
- * BCryptHashData()
+ * BCryptHashData(), BCryptGenRandom()
+ */
+#include <iphlpapi.h>
+/******* """"""""""""
+ * MIB_TCPTABLE_OWNER_PID (FUNCTION LOADED LATER)
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
@@ -440,6 +444,33 @@ static int
 	return (1);
 }
 
+/*
+# THE COPY IN "C:\PROGRAM FILES\INWAY" BELONGS TO THE BACKGROUND SERVICE,
+# WHICH KEEPS IT OPEN. NOW THAT INWAY RUNS AS ADMIN IT COULD WRITE THERE, BUT
+# THE SWAP WOULD FAIL ON EVERY START, SO THAT COPY IS LEFT TO -INSTALL.
+*/
+static int
+	IS_SERVICE_COPY(const WCHAR *EXE)
+{
+	WCHAR	DIR[MAX_PATH];
+	WCHAR	MINE[MAX_PATH];
+	WCHAR	*SLASH;
+
+	if (!GetEnvironmentVariableW(L"ProgramFiles", DIR, MAX_PATH - 8))
+	{
+		return (0);
+	}
+	lstrcatW(DIR, L"\\INWAY");
+	lstrcpynW(MINE, EXE, MAX_PATH);
+	SLASH = wcsrchr(MINE, L'\\');
+	if (!SLASH)
+	{
+		return (0);
+	}
+	*SLASH = L'\0';
+	return (lstrcmpiW(DIR, MINE) == 0);
+}
+
 /* LEFTOVERS OF AN EARLIER UPDATE THAT COULD NOT BE MOVED */
 static void
 	CLEAN_TEMP(void)
@@ -519,31 +550,24 @@ static void
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                        THE UPDATE                        |  \\//  */
 /*   \/   #==========================================================#   \/   */
-void
-	UPDATE_CHECK(void)
+/*
+# THE LATEST RELEASE: 1 WHEN IT IS NEWER AND HAS AN INWAY.EXE WITH A SHA-256,
+# 0 WHEN THERE IS NOTHING NEW, -1 WHEN GITHUB COULD NOT BE ASKED.
+*/
+static int
+	LATEST_RELEASE(
+		char *TAG,
+		size_t TAG_CAP,
+		char *URL,
+		size_t URL_CAP,
+		char *SHA,
+		size_t SHA_CAP
+	)
 {
-	struct S_TEXT		BODY = {0};
-	STARTUPINFOW		SI;
-	PROCESS_INFORMATION	PI;
-	WCHAR			EXE[MAX_PATH];
-	WCHAR			DIR[MAX_PATH];
-	WCHAR			NEW_EXE[MAX_PATH * 2];
-	WCHAR			NOTE[MAX_PATH * 2];
-	WCHAR			*COMMAND;
-	WCHAR			*WIDE_URL;
-	char			TAG[64];
-	char			URL[600];
-	char			SHA[80];
-	char			GOT[80];
-	char			*NOTE_TEXT;
-	size_t			CHARS;
-	HANDLE			FILE_HANDLE;
-	DWORD			DONE;
-	int			OK;
+	struct S_TEXT	BODY = {0};
+	int		OK;
 
-	CLEAN_TEMP();
-	GetModuleFileNameW(NULL, EXE, MAX_PATH);
-	if (!CAN_WRITE_HERE(EXE) || HTTP_GET(
+	if (HTTP_GET(
 		L"https://api.github.com/repos/" UPDATE_REPO L"/releases/latest",
 		&BODY,
 		NULL,
@@ -552,13 +576,81 @@ void
 	) != 200 || !BODY.DATA)
 	{
 		TEXT_FREE(&BODY);
-		return ;
+		return (-1);
 	}
-	OK = JSON_STRING(BODY.DATA, "tag_name", TAG, sizeof(TAG)) &&
+	OK = JSON_STRING(BODY.DATA, "tag_name", TAG, TAG_CAP) &&
 		IS_NEWER(TAG) &&
-		FIND_ASSET(BODY.DATA, URL, sizeof(URL), SHA, sizeof(SHA));
+		FIND_ASSET(BODY.DATA, URL, URL_CAP, SHA, SHA_CAP);
 	TEXT_FREE(&BODY);
+	return (OK);
+}
+
+/* DOWNLOADS URL TO TARGET AND KEEPS IT ONLY WHEN ITS SHA-256 IS RIGHT */
+static int
+	DOWNLOAD_VERIFIED(const char *URL, const char *SHA, const WCHAR *TARGET)
+{
+	HANDLE	FILE_HANDLE;
+	WCHAR	*WIDE_URL;
+	char	GOT[80];
+	int	OK;
+
+	FILE_HANDLE = CreateFileW(
+		TARGET,
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		0,
+		NULL
+	);
+	if (FILE_HANDLE == INVALID_HANDLE_VALUE)
+	{
+		return (0);
+	}
+	WIDE_URL = UTF8_TO_WIDE(URL);
+	OK = WIDE_URL && HTTP_GET(WIDE_URL, NULL, FILE_HANDLE, 0, 60000) == 200;
+	free(WIDE_URL);
+	CloseHandle(FILE_HANDLE);
+	OK = OK && FILE_SHA256(TARGET, GOT) && _stricmp(GOT, SHA) == 0;
 	if (!OK)
+	{
+		DeleteFileW(TARGET);
+	}
+	return (OK);
+}
+
+void
+	UPDATE_CHECK(void)
+{
+	STARTUPINFOW		SI;
+	PROCESS_INFORMATION	PI;
+	WCHAR			EXE[MAX_PATH];
+	WCHAR			DIR[MAX_PATH];
+	WCHAR			NEW_EXE[MAX_PATH * 2];
+	WCHAR			NOTE[MAX_PATH * 2];
+	WCHAR			*COMMAND;
+	char			TAG[64];
+	char			URL[600];
+	char			SHA[80];
+	char			*NOTE_TEXT;
+	size_t			CHARS;
+	HANDLE			FILE_HANDLE;
+	DWORD			DONE;
+
+	CLEAN_TEMP();
+	GetModuleFileNameW(NULL, EXE, MAX_PATH);
+	if (IS_SERVICE_COPY(EXE))
+	{
+		return ; /* THE SERVICE UPDATES THAT ONE BY ITSELF */
+	}
+	if (!CAN_WRITE_HERE(EXE) || LATEST_RELEASE(
+		TAG,
+		sizeof(TAG),
+		URL,
+		sizeof(URL),
+		SHA,
+		sizeof(SHA)
+	) != 1)
 	{
 		return ;
 	}
@@ -569,27 +661,8 @@ void
 	TEMP_DIR(DIR);
 	swprintf(NEW_EXE, MAX_PATH * 2, L"%ls\\INWAY-NEW-%lu.exe", DIR,
 		(unsigned long)GetTickCount());
-	FILE_HANDLE = CreateFileW(
-		NEW_EXE,
-		GENERIC_WRITE,
-		0,
-		NULL,
-		CREATE_ALWAYS,
-		0,
-		NULL
-	);
-	WIDE_URL = UTF8_TO_WIDE(URL);
-	OK = (FILE_HANDLE != INVALID_HANDLE_VALUE && WIDE_URL &&
-		HTTP_GET(WIDE_URL, NULL, FILE_HANDLE, 0, 60000) == 200);
-	free(WIDE_URL);
-	if (FILE_HANDLE != INVALID_HANDLE_VALUE)
+	if (!DOWNLOAD_VERIFIED(URL, SHA, NEW_EXE))
 	{
-		CloseHandle(FILE_HANDLE);
-	}
-	OK = OK && FILE_SHA256(NEW_EXE, GOT) && _stricmp(GOT, SHA) == 0;
-	if (!OK)
-	{
-		DeleteFileW(NEW_EXE);
 		SAYF("  {r}%s{0}\n", LANG(STR_U_FAILED));
 		return ;
 	}
@@ -748,4 +821,272 @@ void
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                        THE UPDATE                        |  //\\  */
+/* '""""' #==========================================================# '""""' */
+
+/* .,,,,. #==========================================================# .,,,,. */
+/*  \\//  |                SERVERS UPDATE THEMSELVES                 |  \\//  */
+/*   \/   #==========================================================#   \/   */
+/*
+# THE BACKGROUND SERVICE HAS NO WINDOW, SO WHAT IT DOES ABOUT UPDATES GOES
+# INTO INWAY.LOG NEXT TO ITS EXE. THE FILE STARTS OVER WHEN IT PASSES 64 KB.
+*/
+void
+	UPDATE_LOG(const char *FORMAT, ...)
+{
+	WCHAR		PATH[MAX_PATH];
+	WCHAR		*SLASH;
+	HANDLE		FILE_HANDLE;
+	SYSTEMTIME	NOW;
+	char		LINE[512];
+	va_list		A;
+	int		N;
+	DWORD		DONE;
+	LARGE_INTEGER	SIZE;
+
+	GetModuleFileNameW(NULL, PATH, MAX_PATH);
+	SLASH = wcsrchr(PATH, L'\\');
+	if (!SLASH || SLASH - PATH > MAX_PATH - 16)
+	{
+		return ;
+	}
+	lstrcpyW(SLASH + 1, L"INWAY.log");
+	GetLocalTime(&NOW);
+	N = snprintf(
+		LINE,
+		sizeof(LINE),
+		"%04u-%02u-%02u %02u:%02u  ",
+		NOW.wYear,
+		NOW.wMonth,
+		NOW.wDay,
+		NOW.wHour,
+		NOW.wMinute
+	);
+	va_start(A, FORMAT);
+	N += vsnprintf(LINE + N, sizeof(LINE) - (size_t)N - 3, FORMAT, A);
+	va_end(A);
+	if (N > (int)sizeof(LINE) - 3)
+	{
+		N = (int)sizeof(LINE) - 3;
+	}
+	LINE[N++] = '\r';
+	LINE[N++] = '\n';
+	FILE_HANDLE = CreateFileW(
+		PATH,
+		FILE_APPEND_DATA,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_ALWAYS,
+		0,
+		NULL
+	);
+	if (FILE_HANDLE == INVALID_HANDLE_VALUE)
+	{
+		return ;
+	}
+	if (GetFileSizeEx(FILE_HANDLE, &SIZE) && SIZE.QuadPart > 65536)
+	{
+		CloseHandle(FILE_HANDLE);
+		FILE_HANDLE = CreateFileW(
+			PATH,
+			GENERIC_WRITE,
+			FILE_SHARE_READ,
+			NULL,
+			CREATE_ALWAYS,
+			0,
+			NULL
+		);
+		if (FILE_HANDLE == INVALID_HANDLE_VALUE)
+		{
+			return ;
+		}
+	}
+	WriteFile(FILE_HANDLE, LINE, (DWORD)N, &DONE, NULL);
+	CloseHandle(FILE_HANDLE);
+}
+
+/* 1 WHILE SOMEONE IS CONNECTED TO THIS PC (A TCP SESSION ON INWAY_PORT) */
+static int
+	SESSION_ACTIVE(void)
+{
+	typedef DWORD	(WINAPI *T_GET_TABLE)(
+		PVOID TABLE,
+		PDWORD SIZE,
+		BOOL SORT,
+		ULONG FAMILY,
+		TCP_TABLE_CLASS CLASS,
+		ULONG RESERVED
+	);
+	HMODULE				IPHLP;
+	T_GET_TABLE			GET_TABLE;
+	MIB_TCPTABLE_OWNER_PID	*TABLE;
+	DWORD				SIZE;
+	DWORD				I;
+	int				ACTIVE;
+
+	IPHLP = LoadLibraryW(L"iphlpapi.dll");
+	GET_TABLE = IPHLP ?
+		(T_GET_TABLE)(void *)GetProcAddress(IPHLP, "GetExtendedTcpTable") :
+		NULL;
+	if (!GET_TABLE)
+	{
+		if (IPHLP)
+		{
+			FreeLibrary(IPHLP);
+		}
+		return (1); /* CAN NOT TELL: BETTER WAIT */
+	}
+	ACTIVE = 0;
+	SIZE = 0;
+	GET_TABLE(NULL, &SIZE, FALSE, AF_INET, TCP_TABLE_OWNER_PID_CONNECTIONS, 0);
+	TABLE = SIZE ? (MIB_TCPTABLE_OWNER_PID *)malloc(SIZE) : NULL;
+	if (TABLE && GET_TABLE(
+		TABLE,
+		&SIZE,
+		FALSE,
+		AF_INET,
+		TCP_TABLE_OWNER_PID_CONNECTIONS,
+		0
+	) == NO_ERROR)
+	{
+		for (I = 0; I < TABLE->dwNumEntries; ++I)
+		{
+			if (TABLE->table[I].dwState == MIB_TCP_STATE_ESTAB &&
+				ntohs((u_short)TABLE->table[I].dwLocalPort) == INWAY_PORT)
+			{
+				ACTIVE = 1;
+			}
+		}
+	}
+	else
+	{
+		ACTIVE = 1;
+	}
+	free(TABLE);
+	FreeLibrary(IPHLP);
+	return (ACTIVE);
+}
+
+/* A RANDOM NUMBER OF MILLISECONDS FROM 0 TO RANGE */
+static DWORD
+	RANDOM_MS(DWORD RANGE)
+{
+	DWORD	R;
+
+	R = GetTickCount() ^ (GetCurrentProcessId() << 16);
+	BCryptGenRandom(
+		NULL,
+		(PUCHAR)&R,
+		sizeof(R),
+		BCRYPT_USE_SYSTEM_PREFERRED_RNG
+	);
+	return (RANGE ? R % RANGE : 0);
+}
+
+/*
+# RUNS IN ITS OWN THREAD INSIDE THE SERVICE UNTIL STOP IS SET.
+# - FIRST CHECK 3 TO 15 MINUTES AFTER START, THEN EVERY 6 HOURS (+/- 30
+#   MINUTES), SO MANY SERVERS BEHIND ONE INTERNET CONNECTION DO NOT ALL ASK
+#   GITHUB AT THE SAME MOMENT. AFTER A FAILED CHECK: AGAIN IN 1 HOUR.
+# - A VERIFIED DOWNLOAD WAITS AS INWAY-NEW.EXE UNTIL NOBODY IS CONNECTED
+#   (LOOKED AT EVERY 5 MINUTES), THEN "INWAY-NEW.EXE -SERVICE-SWAP" STOPS
+#   THE SERVICE, TAKES THE PLACE OF INWAY.EXE AND STARTS THE SERVICE AGAIN.
+*/
+void
+	UPDATE_SERVICE_LOOP(HANDLE STOP)
+{
+	STARTUPINFOW		SI;
+	PROCESS_INFORMATION	PI;
+	WCHAR			EXE[MAX_PATH];
+	WCHAR			NEW_EXE[MAX_PATH + 16];
+	WCHAR			COMMAND[MAX_PATH + 48];
+	WCHAR			*SLASH;
+	char			TAG[64];
+	char			URL[600];
+	char			SHA[80];
+	DWORD			WAIT;
+	DWORD			NEXT_CHECK;
+	DWORD			WAITED;
+	int			PENDING;
+	int			FOUND;
+
+	GetModuleFileNameW(NULL, EXE, MAX_PATH);
+	lstrcpynW(NEW_EXE, EXE, MAX_PATH);
+	SLASH = wcsrchr(NEW_EXE, L'\\');
+	if (!SLASH)
+	{
+		return ;
+	}
+	lstrcpyW(SLASH + 1, L"INWAY-NEW.exe");
+	DeleteFileW(NEW_EXE); /* LEFT FROM A SWAP THAT DID NOT HAPPEN */
+	PENDING = 0;
+	WAITED = 0;
+	NEXT_CHECK = 3 * 60000 + RANDOM_MS(12 * 60000);
+	WAIT = 60000;
+	while (WaitForSingleObject(STOP, WAIT) == WAIT_TIMEOUT)
+	{
+		WAITED += WAIT;
+		if (!PENDING && WAITED >= NEXT_CHECK)
+		{
+			WAITED = 0;
+			NEXT_CHECK = 6 * 3600000 - 30 * 60000 + RANDOM_MS(60 * 60000);
+			FOUND = LATEST_RELEASE(
+				TAG,
+				sizeof(TAG),
+				URL,
+				sizeof(URL),
+				SHA,
+				sizeof(SHA)
+			);
+			if (FOUND < 0)
+			{
+				NEXT_CHECK = 3600000; /* NO ANSWER: TRY AGAIN IN 1 HOUR */
+			}
+			if (FOUND != 1)
+			{
+				continue ;
+			}
+			if (!DOWNLOAD_VERIFIED(URL, SHA, NEW_EXE))
+			{
+				UPDATE_LOG("%s: download or SHA-256 check failed", TAG);
+				NEXT_CHECK = 3600000; /* TRY AGAIN IN 1 HOUR */
+				continue ;
+			}
+			UPDATE_LOG("%s downloaded, waiting until nobody is connected", TAG);
+			PENDING = 1;
+			WAIT = 5 * 60000;
+		}
+		if (!PENDING || SESSION_ACTIVE())
+		{
+			continue ;
+		}
+		swprintf(COMMAND, MAX_PATH + 48, L"\"%ls\" -service-swap", NEW_EXE);
+		memset(&SI, 0, sizeof(SI));
+		SI.cb = sizeof(SI);
+		memset(&PI, 0, sizeof(PI));
+		if (CreateProcessW(
+			NULL,
+			COMMAND,
+			NULL,
+			NULL,
+			FALSE,
+			CREATE_NO_WINDOW,
+			NULL,
+			NULL,
+			&SI,
+			&PI
+		))
+		{
+			UPDATE_LOG("starting the swap to %s", TAG);
+			CloseHandle(PI.hThread);
+			CloseHandle(PI.hProcess);
+			return ; /* THE HELPER STOPS THIS SERVICE NOW */
+		}
+		UPDATE_LOG("could not start the new exe (error %lu)", GetLastError());
+		DeleteFileW(NEW_EXE);
+		PENDING = 0;
+		WAIT = 60000;
+	}
+}
+/*   /\   #==========================================================#   /\   */
+/*  //\\  |                SERVERS UPDATE THEMSELVES                 |  //\\  */
 /* '""""' #==========================================================# '""""' */

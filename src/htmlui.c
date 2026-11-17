@@ -72,6 +72,67 @@ static volatile LONG	G__BANNER_CLOSING__ = 0;
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                     RUNNING A DIALOG                     |  \\//  */
 /*   \/   #==========================================================#   \/   */
+/*
+# THE PAGE IS TAKEN FROM INWAY'S OWN MEMORY AND OPENED FROM A SHORT LIVED
+# FILE IN %TMP%. "RES://" WOULD READ THE EXE FILE FROM THE DISK INSTEAD, AND
+# AN EXE PACKED WITH UPX HAS ITS RESOURCES COMPRESSED THERE. RETURNS 0 WHEN
+# IT DID NOT WORK; THE CALLER THEN TRIES "RES://".
+*/
+static int
+	PAGE_FILE(const WCHAR *PAGE, WCHAR *PATH)
+{
+	HRSRC	RESOURCE;
+	HGLOBAL	DATA;
+	HANDLE	FILE_HANDLE;
+	WCHAR	DIR[MAX_PATH];
+	DWORD	SIZE;
+	DWORD	DONE;
+	DWORD	LEN;
+	int	OK;
+
+	RESOURCE = FindResourceW(NULL, PAGE, MAKEINTRESOURCEW(23)); /* RT_HTML */
+	DATA = RESOURCE ? LoadResource(NULL, RESOURCE) : NULL;
+	SIZE = RESOURCE ? SizeofResource(NULL, RESOURCE) : 0;
+	if (!DATA || !SIZE)
+	{
+		return (0);
+	}
+	LEN = GetTempPathW(MAX_PATH - 64, DIR);
+	if (!LEN || LEN >= MAX_PATH - 64)
+	{
+		return (0);
+	}
+	swprintf(
+		PATH,
+		MAX_PATH,
+		L"%lsINWAY-%lu-%ls",
+		DIR,
+		(unsigned long)GetCurrentThreadId(),
+		PAGE
+	);
+	FILE_HANDLE = CreateFileW(
+		PATH,
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_TEMPORARY,
+		NULL
+	);
+	if (FILE_HANDLE == INVALID_HANDLE_VALUE)
+	{
+		return (0);
+	}
+	OK = WriteFile(FILE_HANDLE, LockResource(DATA), SIZE, &DONE, NULL) &&
+		DONE == SIZE;
+	CloseHandle(FILE_HANDLE);
+	if (!OK)
+	{
+		DeleteFileW(PATH);
+	}
+	return (OK);
+}
+
 /* "res://C:\Program%20Files\INWAY\INWAY.exe/ACCEPT.HTM" */
 static void
 	PAGE_URL(const WCHAR *PAGE, WCHAR *V_OUT, size_t CAP)
@@ -106,6 +167,8 @@ static DWORD WINAPI
 	VARIANT			V_IN;
 	VARIANT			V_OUT;
 	WCHAR			URL[MAX_PATH * 3 + 64];
+	WCHAR			FILE_PATH[MAX_PATH];
+	int			HAVE_FILE;
 
 	D = (struct S_DIALOG *)PARAMETER;
 	D->HR = E_FAIL;
@@ -120,7 +183,15 @@ static DWORD WINAPI
 			"ShowHTMLDialog"
 		);
 	}
-	PAGE_URL(D->PAGE, URL, sizeof(URL) / sizeof(URL[0]));
+	HAVE_FILE = PAGE_FILE(D->PAGE, FILE_PATH);
+	if (HAVE_FILE)
+	{
+		lstrcpynW(URL, FILE_PATH, MAX_PATH);
+	}
+	else
+	{
+		PAGE_URL(D->PAGE, URL, sizeof(URL) / sizeof(URL[0]));
+	}
 	if (SHOW && SUCCEEDED(CreateURLMoniker(NULL, URL, &MONIKER)))
 	{
 		VariantInit(&V_IN);
@@ -135,6 +206,10 @@ static DWORD WINAPI
 		VariantClear(&V_IN);
 		VariantClear(&V_OUT);
 		IMoniker_Release(MONIKER);
+	}
+	if (HAVE_FILE)
+	{
+		DeleteFileW(FILE_PATH);
 	}
 	if (MSHTML)
 	{

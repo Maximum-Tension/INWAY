@@ -7,8 +7,8 @@ I made INWAY for the people around me who never used a PC in their lives. When t
 * **One EXE, both sides.** The same `INWAY.exe` shares this PC and controls other PCs. Copy it and run it.
 * **Made for people who never used a PC.** The address is only the last two numbers (`2.253`), the code is split in two (`942 853`), every screen is a coloured box, and it speaks English and Turkish.
 * **Local network only.** No account, no server, no internet needed. The firewall rule I add only lets in PCs from the same network.
-* **Works where others stop.** Installed as a service, it works on the lock screen, the login screen, in Task Manager and in "Do you want to allow this app?" popups, and it can send **Ctrl + Alt + Del**.
-* **Copy here, paste there.** Text, files and folders, both ways, with plain Ctrl + C and Ctrl + V.
+* **Works where others stop.** Installed as a service, it works on the lock screen, the login screen, in Task Manager and in "Do you want to allow this app?" popups, and it can send **`CTRL` + `ALT` + `DEL`**.
+* **Copy here, paste there.** Text, files and folders, both ways, with plain `CTRL` + `C` and `CTRL` + `V`.
 * **Smooth when it matters.** Moving parts of the screen are sent as JPEG, then sent again sharp a moment after they stop.
 * **Updates itself.** It checks the GitHub releases on start and checks every download with the SHA-256 GitHub gives.
 
@@ -43,7 +43,7 @@ I made INWAY for the people around me who never used a PC in their lives. When t
 > 
 > **[Latest release][__RELEASES__]**
 
-Put the same `INWAY.exe` on both PCs. The first time it opens, Windows asks if INWAY may use the network: click **Allow access**.
+Put the same `INWAY.exe` on both PCs. When it opens, Windows asks for admin rights: click **Yes**. With them, INWAY can also control admin windows like Task Manager. The first time, Windows also asks if INWAY may use the network: click **Allow access**.
 
 ---
 
@@ -106,7 +106,7 @@ A code can be written with a space too: `-p 938 572`.
 
 ## Shortcut .bat files
 
-`-c` connects once and closes INWAY when you close the remote window, when the other PC hangs up, or when you press Ctrl + C. So a shortcut is one line:
+`-c` connects once and closes INWAY when you close the remote window, when the other PC hangs up, or when you press `CTRL` + `C`. So a shortcut is one line:
 
 ```bat
 @echo off
@@ -124,7 +124,7 @@ On a PC that stays on all the time, run this **once**:
 INWAY.exe -install -p 938572
 ```
 
-Windows asks for permission: click **Yes**. INWAY copies itself to `C:\Program Files\INWAY`, installs a Windows service called **INWAY**, and opens the firewall for the local network only. From now on that PC is shared all the time:
+Windows asks for permission: click **Yes**. INWAY copies itself to `C:\Program Files\INWAY`, installs a Windows service called **INWAY**, and opens the firewall for the local network only. On an account without admin rights, the admin part runs hidden and the result shows in the normal window, so a remote session never gets stuck behind an admin window. From now on that PC is shared all the time:
 
 * on the lock screen and the login screen, also right after a restart,
 * in Task Manager and other admin windows,
@@ -135,7 +135,17 @@ A server only lets people in with its code: nobody sits there to click Accept. A
 
 To change the code, run `-install` again with the new one. To take it out: `INWAY.exe -uninstall`.
 
-> **Why a service?** Windows only lets programs with system rights see the lock screen and admin windows, and only a service may press `CTRL` + `ALT` + `DEL`. Running INWAY "as administrator" fixes Task Manager, but not the lock screen.
+**Servers update themselves.** The service asks GitHub for a new release every 6 hours. The first check comes 3 to 15 minutes after it starts, and the times are spread a little, so many servers behind one internet connection don't all ask at once. A new `INWAY.exe` is downloaded and checked against GitHub's SHA-256, then it **waits until nobody is connected**: it never drops a session. Then it stops the service, takes the place of the old EXE and starts the service again. The code, the port and the firewall rule stay the same. What happens is written to `C:\Program Files\INWAY\INWAY.log`.
+
+To keep a server on manual updates, install it like this:
+
+```bat
+INWAY.exe -install -p 938572 -noupdate
+```
+
+> **Installing from far away:** over a normal INWAY session, the Windows **Yes** prompt can't be clicked remotely: someone at that PC has to click it. Over the background service (or the old CONNECT service) you can click it yourself. That's why moving PCs over works through CONNECT.
+
+> **Why a service?** Windows only lets programs with system rights see the lock screen and admin windows, and only a service may press `CTRL` + `ALT` + `DEL`. INWAY already runs as administrator when it can, which covers Task Manager and other admin windows, but not the lock screen.
 
 ## Moving PCs from CONNECT to INWAY
 
@@ -159,7 +169,9 @@ When the tag is newer:
 2. It starts the new EXE and leaves it a small note in `%TMP%` that says where the old EXE is. The old one closes.
 3. The new one reads the note, puts itself in the old one's place, deletes the note and goes on with the same command line.
 
-No network, a GitHub rate limit, or an EXE in `Program Files` (which needs admin rights to replace): INWAY just starts as it is. `-noupdate` skips the check.
+No network or a GitHub rate limit: INWAY just starts as it is. `-noupdate` skips the check.
+
+The copy in `C:\Program Files\INWAY` belongs to the background service, and the service updates it by itself (see [Servers: always on](#servers-always-on)).
 
 ## Making a release
 
@@ -168,6 +180,8 @@ No network, a GitHub rate limit, or an EXE in `Program Files` (which needs admin
 3. Make a GitHub release with the tag **`v20.26.11.17`** and attach **`INWAY.exe`** with exactly that name.
 
 That's all. GitHub makes the SHA-256 by itself, so there is no `.sha256` file to upload.
+
+> **Packing and signing:** do it in this order: **UPX first, then sign, then upload.** UPX breaks a signature, so signing comes last. GitHub's SHA-256 is made from the file you upload, so the updater checks exactly the packed and signed EXE.
 
 ---
 
@@ -190,25 +204,25 @@ gcc -std=c99 -O2 -Isrc src\*.c inway.res.o -o INWAY.exe -static -s -lws2_32 -lgd
 
 ## Files
 
-| File | What it is |
-| --- | --- |
-| [`src/main.c`](src/main.c) | Command line, main screen, `-c`, `-install` |
-| [`src/inway.h`](src/inway.h) | The one header: port, protocol, all modules |
-| [`src/version.h`](src/version.h) | The version, used by the code and the resources |
-| [`src/host.c`](src/host.c) | Sharing side: screen, mouse, keyboard, code check |
-| [`src/viewer.c`](src/viewer.c) | Controlling side: the remote window, Windows key, Ctrl + Alt + Del |
-| [`src/codec.c`](src/codec.c) | Lossless tile packer and JPEG through Windows Imaging Component |
-| [`src/clipboard.c`](src/clipboard.c) | Copy and paste of text, files and folders |
-| [`src/htmlui.c`](src/htmlui.c) | The styled popups (MSHTML, like HTA files) |
-| [`src/service.c`](src/service.c) | Service, lock screen, `-install`, `-uninstall`, `-removeold` |
-| [`src/update.c`](src/update.c) | GitHub release auto updater |
-| [`src/net.c`](src/net.c) | Sockets, short addresses, codes |
-| [`src/console.c`](src/console.c) | Colours and boxes in the black window |
-| [`src/lang.c`](src/lang.c) | Every sentence, in English and Turkish |
-| [`src/text.c`](src/text.c) | Growing text buffer, UTF-8 helpers |
-| [`res/inway.rc`](res/inway.rc) | Icon, manifest, popups, version details |
-| [`res/accept.htm`](res/accept.htm) | "2.253 wants to control this PC" |
-| [`res/banner.htm`](res/banner.htm) | "2.253 is controlling this PC" |
+| File                                 | What it is                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| [`src/main.c`](src/main.c)           | Command line, main screen, `-c`, `-install`                              |
+| [`src/inway.h`](src/inway.h)         | The one header: port, protocol, all modules                              |
+| [`src/version.h`](src/version.h)     | The version, used by the code and the resources                          |
+| [`src/host.c`](src/host.c)           | Sharing side: screen, mouse, keyboard, code check                        |
+| [`src/viewer.c`](src/viewer.c)       | Controlling side: the remote window, Windows key, `CTRL` + `ALT` + `DEL` |
+| [`src/codec.c`](src/codec.c)         | Lossless tile packer and JPEG through Windows Imaging Component          |
+| [`src/clipboard.c`](src/clipboard.c) | Copy and paste of text, files and folders                                |
+| [`src/htmlui.c`](src/htmlui.c)       | The styled popups (MSHTML, like HTA files)                               |
+| [`src/service.c`](src/service.c)     | Service, lock screen, `-install`, `-uninstall`, `-removeold`             |
+| [`src/update.c`](src/update.c)       | GitHub release auto updater                                              |
+| [`src/net.c`](src/net.c)             | Sockets, short addresses, codes                                          |
+| [`src/console.c`](src/console.c)     | Colours and boxes in the black window                                    |
+| [`src/lang.c`](src/lang.c)           | Every sentence, in English and Turkish                                   |
+| [`src/text.c`](src/text.c)           | Growing text buffer, UTF-8 helpers                                       |
+| [`res/inway.rc`](res/inway.rc)       | Icon, manifest, popups, version details                                  |
+| [`res/accept.htm`](res/accept.htm)   | "2.253 wants to control this PC"                                         |
+| [`res/banner.htm`](res/banner.htm)   | "2.253 is controlling this PC"                                           |
 
 ---
 

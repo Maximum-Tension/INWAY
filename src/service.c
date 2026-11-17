@@ -53,6 +53,7 @@ static SERVICE_STATUS_HANDLE	G__SVC_HANDLE__ = NULL;
 static SERVICE_STATUS		G__SVC_STATUS__;
 static HANDLE			G__SVC_STOP__ = NULL;
 static char			G__SVC_CODE_ARG__[8];	/* CODE GIVEN WITH -P */
+static int			G__SVC_NO_UPDATE__ = 0;	/* INSTALLED WITH -NOUPDATE */
 /* **************************** [^] GLOBALS [^] ***************************** */
 
 /* .,,,,. #==========================================================# .,,,,. */
@@ -321,6 +322,13 @@ static HANDLE
 	return (PROCESS);
 }
 
+static DWORD WINAPI
+	UPDATE_THREAD(LPVOID PARAMETER)
+{
+	UPDATE_SERVICE_LOOP((HANDLE)PARAMETER);
+	return (0);
+}
+
 /* KEEPS ONE HELPER ALIVE IN THE SESSION THAT IS ON THE SCREEN */
 static void WINAPI
 	SERVICE_MAIN(DWORD ARGC, LPWSTR *ARGV)
@@ -328,6 +336,7 @@ static void WINAPI
 	HANDLE	SAS_EVENT;
 	HANDLE	WAITS[2];
 	HANDLE	WORKER;
+	HANDLE	UPDATER;
 	DWORD	WORKER_SESSION;
 	DWORD	SESSION;
 	DWORD	WAKE;
@@ -349,6 +358,11 @@ static void WINAPI
 	WAITS[0] = G__SVC_STOP__;
 	WAITS[1] = SAS_EVENT;
 	SET_STATE(SERVICE_RUNNING);
+	UPDATER = NULL;
+	if (!G__SVC_NO_UPDATE__) /* SERVERS UPDATE THEMSELVES, SEE UPDATE.C */
+	{
+		UPDATER = CreateThread(NULL, 0, UPDATE_THREAD, G__SVC_STOP__, 0, NULL);
+	}
 	WORKER = NULL;
 	WORKER_SESSION = 0XFFFFFFFF;
 	for (;;)
@@ -385,15 +399,21 @@ static void WINAPI
 		TerminateProcess(WORKER, 0);
 		CloseHandle(WORKER);
 	}
+	if (UPDATER)
+	{
+		WaitForSingleObject(UPDATER, 3000);
+		CloseHandle(UPDATER);
+	}
 	SET_STATE(SERVICE_STOPPED);
 }
 
 int
-	SERVICE_RUN(const char *CODE)
+	SERVICE_RUN(const char *CODE, int NO_UPDATE)
 {
 	SERVICE_TABLE_ENTRYW	TABLE[2];
 
 	snprintf(G__SVC_CODE_ARG__, sizeof(G__SVC_CODE_ARG__), "%s", CODE);
+	G__SVC_NO_UPDATE__ = NO_UPDATE;
 	TABLE[0].lpServiceName = SVC_NAME;
 	TABLE[0].lpServiceProc = SERVICE_MAIN;
 	TABLE[1].lpServiceName = NULL;
@@ -497,13 +517,17 @@ int
 	return (RESULT);
 }
 
-/* SHOWS THE WINDOWS "YES / NO" PROMPT AND WAITS FOR THE ADMIN COPY */
+/*
+# SHOWS THE WINDOWS "YES / NO" PROMPT, RUNS THE ADMIN COPY WITHOUT A WINDOW
+# AND RETURNS ITS RESULT (SVC_DONE, SVC_COPY_FAILED, ...).
+*/
 int
 	SERVICE_RELAUNCH_AS_ADMIN(const char *PARAMETERS)
 {
 	SHELLEXECUTEINFOW	SEI;
 	WCHAR		EXE[MAX_PATH];
 	WCHAR		*WIDE;
+	DWORD		CODE;
 
 	EXE_PATH(EXE);
 	WIDE = UTF8_TO_WIDE(PARAMETERS);
@@ -513,19 +537,24 @@ int
 	SEI.lpVerb = L"runas";
 	SEI.lpFile = EXE;
 	SEI.lpParameters = WIDE;
-	SEI.nShow = SW_SHOWNORMAL;
+	SEI.nShow = SW_HIDE;
 	if (!ShellExecuteExW(&SEI))
 	{
 		free(WIDE);
-		return (0);
+		return (SVC_NO_PERMISSION);
 	}
 	free(WIDE);
+	CODE = SVC_DONE;
 	if (SEI.hProcess)
 	{
 		WaitForSingleObject(SEI.hProcess, INFINITE);
+		if (!GetExitCodeProcess(SEI.hProcess, &CODE))
+		{
+			CODE = SVC_DONE;
+		}
 		CloseHandle(SEI.hProcess);
 	}
-	return (1);
+	return ((int)CODE);
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                 SEEN FROM A NORMAL COPY                  |  //\\  */
@@ -535,7 +564,7 @@ int
 /*  \\//  |                    INSTALL AND REMOVE                    |  \\//  */
 /*   \/   #==========================================================#   \/   */
 int
-	SERVICE_INSTALL(const char *CODE)
+	SERVICE_INSTALL(const char *CODE, int NO_UPDATE)
 {
 	WCHAR			DIR[MAX_PATH];
 	WCHAR			TARGET[MAX_PATH];
@@ -548,6 +577,7 @@ int
 	SERVICE_DESCRIPTIONW	DESCRIPTION;
 	SC_ACTION		ACTIONS[3];
 	SERVICE_FAILURE_ACTIONSW	FAILURE;
+	DWORD			ERROR_CODE;
 	int			COPIED;
 	int			I;
 	int			STARTED;
@@ -559,7 +589,7 @@ int
 	if (!M)
 	{
 		SAY_LANG("{r}", STR_I_NO_SCM);
-		return (0);
+		return (SVC_NO_SCM);
 	}
 	S = OpenServiceW(M, SVC_NAME, SERVICE_ALL_ACCESS);
 	if (S)
@@ -592,11 +622,18 @@ int
 				CloseServiceHandle(S);
 			}
 			CloseServiceHandle(M);
-			return (0);
+			return (SVC_COPY_FAILED);
 		}
 	}
 	SAY_LANG("", STR_I_SETUP);
-	swprintf(BIN, MAX_PATH + 64, L"\"%ls\" -service -p %hs", TARGET, CODE);
+	swprintf(
+		BIN,
+		MAX_PATH + 64,
+		L"\"%ls\" -service -p %hs%ls",
+		TARGET,
+		CODE,
+		NO_UPDATE ? L" -noupdate" : L""
+	);
 	if (S)
 	{
 		ChangeServiceConfigW(
@@ -633,11 +670,12 @@ int
 	}
 	if (!S)
 	{
+		ERROR_CODE = GetLastError();
 		SAY("  {r}");
-		SAYF(LANG(STR_I_CREATE_FAIL), GetLastError());
+		SAYF(LANG(STR_I_CREATE_FAIL), ERROR_CODE);
 		SAY("{0}\n");
 		CloseServiceHandle(M);
-		return (0);
+		return (SVC_CREATE_FAILED | (int)((ERROR_CODE & 0XFFFF) << 8));
 	}
 	DESCRIPTION.lpDescription = L"Shares this screen with INWAY on the local "
 		L"network, also on the lock screen. Remove with: INWAY.exe -uninstall";
@@ -673,9 +711,9 @@ int
 	if (!STARTED)
 	{
 		SAY_LANG("{r}", STR_I_NOT_STARTED);
-		return (0);
+		return (SVC_NOT_STARTED);
 	}
-	return (1);
+	return (SVC_DONE);
 }
 
 /* STOPS AND DELETES A SERVICE, ITS FIREWALL RULE AND ITS FOLDER */
@@ -697,7 +735,7 @@ static int
 	if (!M)
 	{
 		SAY_LANG("{r}", STR_I_NO_SCM);
-		return (0);
+		return (SVC_NO_SCM);
 	}
 	S = OpenServiceW(M, NAME, SERVICE_ALL_ACCESS);
 	if (S)
@@ -717,7 +755,7 @@ static int
 	swprintf(TARGET, MAX_PATH, L"%ls\\%ls", DIR, FILE_HANDLE);
 	DELETE_LATER(TARGET); /* IN USE: GONE AT THE NEXT RESTART */
 	RemoveDirectoryW(DIR);
-	return (1);
+	return (SVC_DONE);
 }
 
 int
@@ -742,6 +780,79 @@ int
 		L"CONNECT.exe",
 		STR_I_OLD_NOT_FOUND
 	));
+}
+
+/*
+# "INWAY-NEW.EXE -SERVICE-SWAP", STARTED BY THE SERVICE WHEN AN UPDATE IS
+# READY AND NOBODY IS CONNECTED: STOP THE SERVICE, PUT THIS EXE IN THE PLACE
+# OF INWAY.EXE, START THE SERVICE AGAIN. WHEN THE MOVE FAILS, THE OLD EXE
+# STAYS AND THE SERVICE STARTS WITH IT.
+*/
+int
+	SERVICE_SWAP(void)
+{
+	SC_HANDLE	M;
+	SC_HANDLE	S;
+	WCHAR		SELF[MAX_PATH];
+	WCHAR		TARGET[MAX_PATH];
+	WCHAR		*SLASH;
+	int		MOVED;
+	int		I;
+
+	GetModuleFileNameW(NULL, SELF, MAX_PATH);
+	lstrcpynW(TARGET, SELF, MAX_PATH);
+	SLASH = wcsrchr(TARGET, L'\\');
+	if (!SLASH)
+	{
+		return (1);
+	}
+	lstrcpyW(SLASH + 1, L"INWAY.exe");
+	M = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT);
+	S = M ? OpenServiceW(
+		M,
+		SVC_NAME,
+		SERVICE_STOP | SERVICE_START | SERVICE_QUERY_STATUS
+	) : NULL;
+	if (!S)
+	{
+		UPDATE_LOG(
+			"swap: could not open the service (error %lu)",
+			GetLastError()
+		);
+		if (M)
+		{
+			CloseServiceHandle(M);
+		}
+		return (1);
+	}
+	STOP_SERVICE(S);
+	MOVED = 0;
+	for (I = 0; I < 40 && !MOVED; ++I) /* THE HELPER MAY STILL BE CLOSING */
+	{
+		MOVED = MoveFileExW(
+			SELF,
+			TARGET,
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+		);
+		if (!MOVED)
+		{
+			Sleep(250);
+		}
+	}
+	StartServiceW(S, 0, NULL);
+	CloseServiceHandle(S);
+	CloseServiceHandle(M);
+	if (MOVED)
+	{
+		UPDATE_LOG("updated to %s", INWAY_VERSION_TEXT);
+		return (0);
+	}
+	UPDATE_LOG(
+		"swap failed (error %lu), keeping the old version",
+		GetLastError()
+	);
+	MoveFileExW(SELF, NULL, MOVEFILE_DELAY_UNTIL_REBOOT);
+	return (1);
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                    INSTALL AND REMOVE                    |  //\\  */

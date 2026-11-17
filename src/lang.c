@@ -152,6 +152,9 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_I_REMOVE_HINT] = "To remove it:  INWAY.exe -uninstall",
 	[STR_I_REMOVED] = "Background sharing is removed.",
 	[STR_I_OLD_REMOVED] = "The old CONNECT is removed.",
+	[STR_I_TAKEOVER] =
+		"Is INWAY also open in a normal window on this PC? Close it: the "
+		"background sharing takes over in a few seconds.",
 
 	[STR_PRESS_ENTER_CLOSE] = "Press Enter to close.",
 	[STR_PRESS_ENTER] = "Press Enter to continue.",
@@ -166,6 +169,7 @@ static const char	*const G__EN__[STR__COUNT] =
 		"  INWAY.exe -c 2.253            connect to 2.253 once, they Accept\n"
 		"  INWAY.exe -install -p 938572  share all the time, also on the\n"
 		"                                lock screen (for servers)\n"
+		"      ... -install -p 938572 -noupdate   same, but no auto update\n"
 		"  INWAY.exe -uninstall          remove that again\n"
 		"  INWAY.exe -removeold          remove the old CONNECT tool\n"
 		"  INWAY.exe -lang tr            language: en or tr\n"
@@ -299,6 +303,9 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_I_REMOVE_HINT] = "Kaldırmak için:  INWAY.exe -uninstall",
 	[STR_I_REMOVED] = "Arka plan paylaşımı kaldırıldı.",
 	[STR_I_OLD_REMOVED] = "Eski CONNECT kaldırıldı.",
+	[STR_I_TAKEOVER] =
+		"INWAY bu bilgisayarda normal bir pencerede de açık mı? Kapatın: "
+		"arka plan paylaşımı birkaç saniye içinde devralır.",
 
 	[STR_PRESS_ENTER_CLOSE] = "Kapatmak için Enter'a basın.",
 	[STR_PRESS_ENTER] = "Devam etmek için Enter'a basın.",
@@ -313,6 +320,7 @@ static const char	*const G__TR__[STR__COUNT] =
 		"  INWAY.exe -c 2.253            2.253'e bağlan, karşı taraf onaylar\n"
 		"  INWAY.exe -install -p 938572  her zaman paylaş, kilit ekranında\n"
 		"                                da (sunucular için)\n"
+		"      ... -install -p 938572 -noupdate   otomatik güncellemesiz\n"
 		"  INWAY.exe -uninstall          bunu geri kaldır\n"
 		"  INWAY.exe -removeold          eski CONNECT aracını kaldır\n"
 		"  INWAY.exe -lang en            dil: en ya da tr\n"

@@ -33,11 +33,13 @@
 |* :  5| INWAY.exe -c 2.253               connect once, they click Accept   : *|
 |* :  6| INWAY.exe -install -p 938572     always on,                        : *|
 |* :  7|     also on the lock screen                                        : *|
-|* :  8| INWAY.exe -uninstall             remove that again                 : *|
-|* :  9| INWAY.exe -removeold             remove the old CONNECT tool       : *|
-|* : 10| INWAY.exe -lang tr               language: en or tr                : *|
-|* : 11| INWAY.exe -noupdate              do not look for a new version     : *|
-|* : 12|                                                                    : *|
+|* :  8| INWAY.exe -install -p 938572 -noupdate   same,                     : *|
+|* :  9|     never updates itself                                           : *|
+|* : 10| INWAY.exe -uninstall             remove that again                 : *|
+|* : 11| INWAY.exe -removeold             remove the old CONNECT tool       : *|
+|* : 12| INWAY.exe -lang tr               language: en or tr                : *|
+|* : 13| INWAY.exe -noupdate              do not look for a new version     : *|
+|* : 14|                                                                    : *|
 |* :                                                                        : *|
 |* '........................................................................' *|
 \******************************************************************************/
@@ -67,6 +69,8 @@ struct	S_OPTIONS
 	int	WORKER;
 	int	NO_UPDATE;
 	int	UPDATE_FINISH;
+	int	QUIET;		/* THE HIDDEN ADMIN COPY: NO QUESTIONS */
+	int	SERVICE_SWAP;	/* A SERVER UPDATING ITSELF */
 	int	HELP;
 };
 
@@ -207,6 +211,14 @@ static void
 		else if (IS_OPTION(ARGV[I], "noupdate"))
 		{
 			O->NO_UPDATE = 1;
+		}
+		else if (IS_OPTION(ARGV[I], "service-swap"))
+		{
+			O->SERVICE_SWAP = 1;
+		}
+		else if (IS_OPTION(ARGV[I], "quiet"))
+		{
+			O->QUIET = 1;
 		}
 		else if (IS_OPTION(ARGV[I], "update-finish"))
 		{
@@ -459,71 +471,47 @@ static void
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                          MODES                           |  \\//  */
 /*   \/   #==========================================================#   \/   */
-/* -INSTALL, -UNINSTALL, -REMOVEOLD: ASK FOR ADMIN RIGHTS, THEN DO IT */
-static int
-	ADMIN_JOB(const struct S_OPTIONS *O, const char *ERRORS)
+/* THE GREEN "DONE" BOX, OR THE RED REASON WHY IT DID NOT WORK */
+static void
+	SHOW_ADMIN_RESULT(const struct S_OPTIONS *O, int RESULT, int TELL_WHY)
 {
 	struct S_TEXT	OUTPUT = {0};
-	struct S_TEXT	L[4];
-	const char	*LINES[4];
-	char		PARAMETERS[64];
-	char		EXTRA[16];
+	struct S_TEXT	L[5];
+	const char	*LINES[5];
 	char		ADDRESS[24];
 	char		CODE[16];
-	int		OK;
 	int		I;
 
-	if (O->INSTALL && !O->CODE[0])
-	{
-		SAYF("\n%s  {r}%s{0}\n", ERRORS, LANG(STR_I_NEEDS_CODE));
-		PRESS_ENTER(STR_PRESS_ENTER_CLOSE);
-		return (1);
-	}
-	if (!SERVICE_IS_ADMIN())
-	{
-		SAYF("\n  {y}%s{0}\n", LANG(STR_I_PERMISSION));
-		if (O->INSTALL)
-		{
-			snprintf(PARAMETERS, sizeof(PARAMETERS), "-install -p %s", O->CODE);
-		}
-		else
-		{
-			snprintf(PARAMETERS, sizeof(PARAMETERS), "%s",
-				O->UNINSTALL ? "-uninstall" : "-removeold");
-		}
-		if (O->LANGUAGE[0])
-		{
-			snprintf(EXTRA, sizeof(EXTRA), " -lang %.2s", O->LANGUAGE);
-			strcat(PARAMETERS, EXTRA);
-		}
-		if (!SERVICE_RELAUNCH_AS_ADMIN(PARAMETERS))
-		{
-			SAYF("  {r}%s{0}\n", LANG(STR_I_NO_PERMISSION));
-			PRESS_ENTER(STR_PRESS_ENTER_CLOSE);
-			return (1);
-		}
-		return (0);
-	}
-	SAY("\n");
-	TITLE_BOX(&OUTPUT, O->INSTALL ? LANG(STR_I_TITLE_INSTALL) :
-		O->UNINSTALL ? LANG(STR_I_TITLE_REMOVE) : LANG(STR_I_TITLE_OLD));
-	TEXT_ADD(&OUTPUT, "\n");
-	SAY(OUTPUT.DATA);
-	OUTPUT.LEN = 0;
-	if (O->INSTALL)
-	{
-		OK = SERVICE_INSTALL(O->CODE);
-	}
-	else if (O->UNINSTALL)
-	{
-		OK = SERVICE_UNINSTALL();
-	}
-	else
-	{
-		OK = SERVICE_REMOVE_OLD();
-	}
 	memset(L, 0, sizeof(L));
-	if (OK && O->INSTALL)
+	if (RESULT != SVC_DONE)
+	{
+		if (!TELL_WHY)
+		{
+			return ; /* THE JOB ALREADY SAID WHY, IN THIS WINDOW */
+		}
+		switch (RESULT & 0XFF)
+		{
+			case (SVC_NO_SCM):
+				TEXT_ADDF(&OUTPUT, "  {r}%s{0}\n", LANG(STR_I_NO_SCM));
+				break ;
+			case (SVC_COPY_FAILED):
+				TEXT_ADDF(&OUTPUT, "  {r}%s{0}\n", LANG(STR_I_COPY_FAIL));
+				break ;
+			case (SVC_CREATE_FAILED):
+				TEXT_ADD(&OUTPUT, "  {r}");
+				TEXT_ADDF(&OUTPUT, LANG(STR_I_CREATE_FAIL),
+					(unsigned long)(RESULT >> 8));
+				TEXT_ADD(&OUTPUT, "{0}\n");
+				break ;
+			case (SVC_NOT_STARTED):
+				TEXT_ADDF(&OUTPUT, "  {r}%s{0}\n", LANG(STR_I_NOT_STARTED));
+				break ;
+			default:
+				TEXT_ADDF(&OUTPUT, "  {r}%s{0}\n", LANG(STR_I_NO_PERMISSION));
+				break ;
+		}
+	}
+	else if (O->INSTALL)
 	{
 		G_MY_IP = PICK_LOCAL_IP();
 		IP_SHORT(G_MY_IP, ADDRESS, sizeof(ADDRESS));
@@ -536,30 +524,105 @@ static int
 			G_MY_IP ? ADDRESS : "?"
 		);
 		TEXT_ADDF(&L[2], "%-9s {y}%s{0}", LANG(STR_CODE), CODE);
-		TEXT_ADDF(&L[3], "{d}%s{0}", LANG(STR_I_REMOVE_HINT));
-		for (I = 0; I < 4; ++I)
+		TEXT_ADDF(&L[3], "{d}%s{0}", LANG(STR_I_TAKEOVER));
+		TEXT_ADDF(&L[4], "{d}%s{0}", LANG(STR_I_REMOVE_HINT));
+		for (I = 0; I < 5; ++I)
 		{
 			LINES[I] = L[I].DATA;
 		}
-		BOX(&OUTPUT, LANG(STR_I_DONE_T), LINES, 4, "{G}", 0);
+		BOX(&OUTPUT, LANG(STR_I_DONE_T), LINES, 5, "{G}", 0);
 	}
-	else if (OK)
+	else
 	{
 		LINES[0] = LANG(O->UNINSTALL ? STR_I_REMOVED : STR_I_OLD_REMOVED);
 		BOX(&OUTPUT, LANG(STR_I_DONE_T), LINES, 1, "{G}", 0);
 	}
-	if (OUTPUT.DATA)
-	{
-		SAY("\n");
-		SAY(OUTPUT.DATA);
-	}
-	for (I = 0; I < 4; ++I)
+	SAY("\n");
+	SAY(OUTPUT.DATA);
+	for (I = 0; I < 5; ++I)
 	{
 		TEXT_FREE(&L[I]);
 	}
 	TEXT_FREE(&OUTPUT);
+}
+
+static int
+	RUN_ADMIN_JOB(const struct S_OPTIONS *O)
+{
+	if (O->INSTALL)
+	{
+		return (SERVICE_INSTALL(O->CODE, O->NO_UPDATE));
+	}
+	if (O->UNINSTALL)
+	{
+		return (SERVICE_UNINSTALL());
+	}
+	return (SERVICE_REMOVE_OLD());
+}
+
+/*
+# -INSTALL, -UNINSTALL, -REMOVEOLD.
+# WITHOUT ADMIN RIGHTS, A HIDDEN ADMIN COPY ("-QUIET") DOES THE WORK AND THIS
+# NORMAL WINDOW SHOWS THE RESULT. A VISIBLE ADMIN WINDOW WOULD FREEZE A REMOTE
+# SESSION: WINDOWS DOES NOT LET A NORMAL PROGRAM CLICK OR TYPE INTO IT.
+*/
+static int
+	ADMIN_JOB(const struct S_OPTIONS *O, const char *ERRORS)
+{
+	struct S_TEXT	OUTPUT = {0};
+	char		PARAMETERS[64];
+	char		EXTRA[16];
+	int		RESULT;
+
+	if (O->QUIET)
+	{
+		return (SERVICE_IS_ADMIN() ? RUN_ADMIN_JOB(O) : SVC_NO_PERMISSION);
+	}
+	if (O->INSTALL && !O->CODE[0])
+	{
+		SAYF("\n%s  {r}%s{0}\n", ERRORS, LANG(STR_I_NEEDS_CODE));
+		PRESS_ENTER(STR_PRESS_ENTER_CLOSE);
+		return (1);
+	}
+	SAY("\n");
+	TITLE_BOX(&OUTPUT, O->INSTALL ? LANG(STR_I_TITLE_INSTALL) :
+		O->UNINSTALL ? LANG(STR_I_TITLE_REMOVE) : LANG(STR_I_TITLE_OLD));
+	TEXT_ADD(&OUTPUT, "\n");
+	SAY(OUTPUT.DATA);
+	TEXT_FREE(&OUTPUT);
+	if (SERVICE_IS_ADMIN())
+	{
+		RESULT = RUN_ADMIN_JOB(O);
+		SHOW_ADMIN_RESULT(O, RESULT, 0);
+	}
+	else
+	{
+		SAYF("  {y}%s{0}\n", LANG(STR_I_PERMISSION));
+		if (O->INSTALL)
+		{
+			snprintf(
+				PARAMETERS,
+				sizeof(PARAMETERS),
+				"-quiet -install -p %s%s",
+				O->CODE,
+				O->NO_UPDATE ? " -noupdate" : ""
+			);
+		}
+		else
+		{
+			snprintf(PARAMETERS, sizeof(PARAMETERS), "-quiet %s",
+				O->UNINSTALL ? "-uninstall" : "-removeold");
+		}
+		if (O->LANGUAGE[0])
+		{
+			snprintf(EXTRA, sizeof(EXTRA), " -lang %.2s", O->LANGUAGE);
+			strcat(PARAMETERS, EXTRA);
+		}
+		RESULT = SERVICE_RELAUNCH_AS_ADMIN(PARAMETERS);
+		SHOW_ADMIN_RESULT(O, RESULT, 1);
+	}
 	PRESS_ENTER(STR_PRESS_ENTER_CLOSE);
-	return (OK ? 0 : 1);
+	return (RESULT == SVC_DONE ? 0 : 1);
 }
 
 /* -C: CONNECT ONCE. WHEN THAT SESSION ENDS, INWAY ENDS. */
@@ -727,7 +790,11 @@ int
 	/* BACKGROUND MODES: NO WINDOW OF THEIR OWN */
 	if (O.SERVICE)
 	{
-		return (SERVICE_RUN(O.CODE));
+		return (SERVICE_RUN(O.CODE, O.NO_UPDATE));
+	}
+	if (O.SERVICE_SWAP)
+	{
+		return (SERVICE_SWAP());
 	}
 	if (WSAStartup(MAKEWORD(2, 2), &WD) != 0)
 	{

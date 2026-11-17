@@ -17,9 +17,12 @@
 |*|__________________________________________________________________________|*|
 |*|             ________                                                     |*|
 |*| EVERYTHING THAT IS BUILT INTO INWAY.EXE BESIDES THE CODE: THE ICON, THE  |*|
-|*| MANIFEST (MODERN CONTROLS, SHARP ON HIGH DPI SCREENS, NO ADMIN PROMPT),  |*|
-|*| THE TWO HTML POPUP PAGES AND THE VERSION DETAILS WINDOWS SHOWS IN THE    |*|
-|*| FILE'S PROPERTIES, IN ENGLISH AND TURKISH.                               |*|
+|*| MANIFEST, THE TWO HTML POPUP PAGES AND THE VERSION DETAILS WINDOWS SHOWS |*|
+|*| IN THE FILE'S PROPERTIES, IN ENGLISH AND TURKISH.                        |*|
+|*| THE MANIFEST ASKS FOR ADMIN RIGHTS ON START ("HIGHESTAVAILABLE"): ON AN  |*|
+|*| ADMIN ACCOUNT WINDOWS SHOWS ITS YES / NO PROMPT AND INWAY CAN THEN       |*|
+|*| CONTROL ADMIN WINDOWS TOO. ON A LIMITED ACCOUNT IT STARTS NORMALLY.      |*|
+|*| CHANGE IT TO "REQUIREADMINISTRATOR" TO ALWAYS DEMAND ADMIN RIGHTS.       |*|
 |*| THE VERSION NUMBERS COME FROM SRC/VERSION.H, SO THEY ARE CHANGED IN ONE  |*|
 |*| PLACE ONLY. THIS FILE IS UTF-8.                                          |*|
 |*|__________________________________________________________________________|*|
