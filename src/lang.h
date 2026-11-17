@@ -1,5 +1,5 @@
 /******************************************************************************\
-# H - LANG                                       #       Maximum Tension       #
+# H - lang                                       #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,39 +8,18 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                   LANG                                   |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| EVERY SENTENCE INWAY SHOWS, IN ENGLISH AND TURKISH. THE LANGUAGE COMES   |*|
-|*| FROM THE WINDOWS DISPLAY LANGUAGE; ANYTHING THAT IS NOT TURKISH GETS     |*|
-|*| ENGLISH. "-LANG EN" OR "-LANG TR" ON THE COMMAND LINE OVERRIDES IT.      |*|
-|*| TO ADD A LANGUAGE: ADD A TABLE IN LANG.C IN THE SAME ORDER AS E_STR, AND |*|
-|*| PICK IT IN LANG_INIT(). STRINGS ARE UTF-8. "%S" IS USUALLY THE SHORT     |*|
-|*| ADDRESS OF A PC, LIKE 2.253.                                             |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| void        LANG_INIT(const char *FORCE);                           : *|
-|* : 3| const char *LANG(enum E_STR ID);                                    : *|
-|* : 4|                                                                     : *|
-|* :                                                                        : *|
-|* : EXAMPLES:                                                              : *|
-|* :                                                                        : *|
-|* :   v [C LANGUAGE]                                                       : *|
-|* :  1|                                                                    : *|
-|* :  2| LANG_INIT(NULL);                                                   : *|
-|* :  3| SAYF(LANG(STR_CONNECTING), "2.253");                               : *|
-|* :  4|                                                                    : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# EVERY SENTENCE INWAY SHOWS, IN ENGLISH AND TURKISH. THE LANGUAGE COMES FROM
+# THE WINDOWS DISPLAY LANGUAGE; ANYTHING THAT IS NOT TURKISH GETS ENGLISH.
+# "-LANG EN" OR "-LANG TR" ON THE COMMAND LINE OVERRIDES IT.
+# TO ADD A LANGUAGE: ADD A TABLE IN LANG.C IN THE SAME ORDER AS E_STR, AND PICK
+# IT IN LANG_INIT(). STRINGS ARE UTF-8. "%S" IS USUALLY THE SHORT ADDRESS OF A
+# PC, LIKE 2.253.
+*/
 
 #ifndef LANG_H
 #define LANG_H
@@ -135,6 +114,12 @@ enum	E_STR
 	STR_I_REMOVED,
 	STR_I_OLD_REMOVED,
 	STR_I_TAKEOVER,
+	STR_I_PERMISSION_INSTALL,
+	STR_I_USER_SETUP,
+	STR_I_USER_FAIL,
+	STR_I_USER_DONE,
+	STR_I_USER_UPGRADE,
+	STR_I_USER_REMOVED,
 	/* MISC */
 	STR_PRESS_ENTER_CLOSE,
 	STR_PRESS_ENTER,
@@ -150,10 +135,19 @@ enum	E_STR
 	STR_C_SENT,
 	STR_C_GOT,
 	STR_C_TOO_BIG,
+	STR_C_CANT_READ,
+	/* ADMIN RIGHTS FOR ONE SESSION */
+	STR_N_ADMIN_ASK,
+	STR_N_ADMIN_NO,
+	STR_SVC_USER_HINT,
+	/* A SERVER UPDATES BEFORE A SESSION */
+	STR_UPDATING_WAIT,
+	STR_R_UPDATING_T,
+	STR_R_UPDATING,
 	STR__COUNT
 };
 
-extern void		LANG_INIT(const char *FORCE);
+extern void			LANG_INIT(const char *FORCE);
 extern const char	*LANG(enum E_STR ID);
 
 #endif /* !LANG_H */

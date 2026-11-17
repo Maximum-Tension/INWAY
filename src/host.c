@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - HOST                                       #       Maximum Tension       #
+# C - host                                       #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,42 +8,376 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                   HOST                                   |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| THE SHARING SIDE. ONE THREAD ACCEPTS CONNECTIONS, ONE THREAD PER         |*|
-|*| CONNECTION CHECKS THE CODE AND SENDS THE SCREEN, AND ONE MORE THREAD     |*|
-|*| PLAYS BACK THE MOUSE AND KEYBOARD.                                       |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| void HOST_START(void);                                              : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# THE SHARING SIDE. ONE THREAD ACCEPTS CONNECTIONS, ONE THREAD PER CONNECTION
+# CHECKS THE CODE AND SENDS THE SCREEN, AND ONE MORE THREAD PLAYS BACK THE MOUSE
+# AND KEYBOARD.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * ENCODE_TILE(), JPEG_ENCODE(), CLIP_START()
+ * #define _WIN32_WINNT
+ * #define IN_BUTTON
+ * #define IN_KEY
+ * #define IN_MOVE
+ * #define IN_SAS
+ * #define IN_WHEEL
+ * #define INWAY_ADMIN_SECONDS
+ * #define INWAY_FRAME_MS
+ * #define INWAY_IDLE_MS
+ * #define INWAY_MAGIC
+ * #define INWAY_PORT
+ * #define INWAY_SAS_EVENT
+ * #define INWAY_TILE
+ * #define MSG_CLIP_ABORT
+ * #define MSG_CLIP_TEXT
+ * #define MSG_FRAME
+ * #define MSG_INPUT
+ * #define REPLY_BUSY
+ * #define REPLY_DECLINED
+ * #define REPLY_NEED_CODE
+ * #define REPLY_UPDATING
+ * #define REPLY_WRONG_CODE
+ * #define TILE_EXACT
+ * #define TILE_JPEG
+ * #define WIN32_LEAN_AND_MEAN
+ * struct S_INPUT_MSG;
+ * struct S_TILE_HDR;
+ */
+#include <winsock2.h>
+/******* """"""""""""
+ * #define AF_INET
+ * #define FD_SET(fd, set)
+ * #define FD_ZERO(set)
+ * #define INADDR_ANY
+ * #define INADDR_LOOPBACK
+ * #define INVALID_SOCKET
+ * #define IPPROTO_TCP
+ * #define SD_BOTH
+ * #define SD_SEND
+ * #define SO_RCVTIMEO
+ * #define SO_SNDBUF
+ * #define SOCK_STREAM
+ * #define SOL_SOCKET
+ * #define TCP_NODELAY
+ * typedef	fd_set;
+ * typedef	SOCKET;
+ * struct sockaddr;
+ * struct sockaddr_in;
+ * typedef	u_short;
+ * SOCKET	accept(SOCKET, struct sockaddr *, int *);
+ * int		bind(SOCKET, const struct sockaddr *, int);
+ * int		closesocket(SOCKET);
+ * int		connect(SOCKET, const struct sockaddr *, int);
+ * int		getpeername(SOCKET, struct sockaddr *, int *);
+ * int		getsockname(SOCKET, struct sockaddr *, int *);
+ * u_long	htonl(u_long);
+ * u_short	htons(u_short);
+ * int		listen(SOCKET, int);
+ * u_long	ntohl(u_long);
+ * u_short	ntohs(u_short);
+ * int		recv(SOCKET, char *, int, int);
+ * int		select(int, fd_set *, fd_set *, fd_set *, const TIMEVAL *);
+ * int		setsockopt(SOCKET, int, int, const char *, int);
+ * int		shutdown(SOCKET, int);
+ * SOCKET	socket(int, int, int);
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define BI_RGB
+ * #define CURSOR_SHOWING
+ * #define DI_NORMAL
+ * #define DIB_RGB_COLORS
+ * #define ERROR_IO_PENDING
+ * #define ERROR_PIPE_CONNECTED
+ * #define EVENT_MODIFY_STATE
+ * #define FALSE
+ * #define FILE_FLAG_FIRST_PIPE_INSTANCE
+ * #define FILE_FLAG_OVERLAPPED
+ * #define GENERIC_ALL
+ * #define GENERIC_READ
+ * #define GENERIC_WRITE
+ * #define INFINITE
+ * #define INPUT_KEYBOARD
+ * #define INPUT_MOUSE
+ * #define InterlockedCompareExchange
+ * #define InterlockedDecrement
+ * #define InterlockedExchange
+ * #define INVALID_HANDLE_VALUE
+ * #define KEYEVENTF_EXTENDEDKEY
+ * #define KEYEVENTF_KEYUP
+ * #define MAX_PATH
+ * #define MOUSEEVENTF_LEFTDOWN
+ * #define MOUSEEVENTF_LEFTUP
+ * #define MOUSEEVENTF_MIDDLEDOWN
+ * #define MOUSEEVENTF_MIDDLEUP
+ * #define MOUSEEVENTF_RIGHTDOWN
+ * #define MOUSEEVENTF_RIGHTUP
+ * #define MOUSEEVENTF_WHEEL
+ * #define OPEN_EXISTING
+ * #define PIPE_ACCESS_DUPLEX
+ * #define PIPE_REJECT_REMOTE_CLIENTS
+ * #define PIPE_TYPE_BYTE
+ * #define PIPE_WAIT
+ * #define SM_CXSCREEN
+ * #define SM_CYSCREEN
+ * #define SRCCOPY
+ * #define SW_HIDE
+ * #define SYNCHRONIZE
+ * #define TRUE
+ * #define UOI_NAME
+ * #define WAIT_OBJECT_0
+ * #define WINAPI
+ * typedef	BITMAPINFO;
+ * typedef	BITMAPINFOHEADER;
+ * typedef	BOOL;
+ * typedef	CURSORINFO;
+ * typedef	DWORD;
+ * typedef	HANDLE;
+ * typedef	HBITMAP;
+ * typedef	HDC;
+ * typedef	HDESK;
+ * typedef	HGDIOBJ;
+ * typedef	ICONINFO;
+ * typedef	INPUT;
+ * typedef	LONG;
+ * typedef	LPVOID;
+ * typedef	OVERLAPPED;
+ * typedef	WCHAR;
+ * typedef	WORD;
+ * BOOL		BitBlt(HDC, int, int, int, int, HDC, int, int, DWORD);
+ * BOOL		CancelIo(HANDLE);
+ * BOOL		CloseDesktop(HDESK);
+ * BOOL		CloseHandle(HANDLE);
+ * BOOL		ConnectNamedPipe(HANDLE, LPOVERLAPPED);
+ * HDC		CreateCompatibleDC(HDC);
+ * HBITMAP	CreateDIBSection(
+ * 	HDC,
+ * 	const BITMAPINFO *,
+ * 	UINT,
+ * 	void **,
+ * 	HANDLE,
+ * 	DWORD
+ * );
+ * HANDLE	CreateEventW(LPSECURITY_ATTRIBUTES, BOOL, BOOL, LPCWSTR);
+ * HANDLE	CreateFileW(
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	DWORD,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	DWORD,
+ * 	DWORD,
+ * 	HANDLE
+ * );
+ * HANDLE	CreateNamedPipeW(
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	DWORD,
+ * 	DWORD,
+ * 	DWORD,
+ * 	DWORD,
+ * 	DWORD,
+ * 	LPSECURITY_ATTRIBUTES
+ * );
+ * HANDLE	CreateThread(
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	SIZE_T,
+ * 	LPTHREAD_START_ROUTINE,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	LPDWORD
+ * );
+ * BOOL		DeleteDC(HDC);
+ * BOOL		DeleteObject(HGDIOBJ);
+ * BOOL		DrawIconEx(HDC, int, int, HICON, int, int, UINT, HBRUSH, UINT);
+ * void		EnterCriticalSection(LPCRITICAL_SECTION);
+ * BOOL		GdiFlush(void);
+ * DWORD	GetCurrentProcessId(void);
+ * DWORD	GetCurrentThreadId(void);
+ * BOOL		GetCursorInfo(PCURSORINFO);
+ * HDC		GetDC(HWND);
+ * BOOL		GetExitCodeThread(HANDLE, LPDWORD);
+ * BOOL		GetIconInfo(HICON, PICONINFO);
+ * DWORD	GetLastError(void);
+ * DWORD	GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
+ * BOOL		GetOverlappedResult(HANDLE, LPOVERLAPPED, LPDWORD, BOOL);
+ * int		GetSystemMetrics(int);
+ * HDESK	GetThreadDesktop(DWORD);
+ * DWORD	GetTickCount(void);
+ * BOOL		GetUserObjectInformationA(HANDLE, int, PVOID, DWORD, LPDWORD);
+ * void		LeaveCriticalSection(LPCRITICAL_SECTION);
+ * HANDLE	OpenEventW(DWORD, BOOL, LPCWSTR);
+ * HDESK	OpenInputDesktop(DWORD, BOOL, ACCESS_MASK);
+ * HANDLE	OpenProcess(DWORD, BOOL, DWORD);
+ * BOOL		ReadFile(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);
+ * int		ReleaseDC(HWND, HDC);
+ * HGDIOBJ	SelectObject(HDC, HGDIOBJ);
+ * UINT		SendInput(UINT, LPINPUT, int);
+ * BOOL		SetCursorPos(int, int);
+ * BOOL		SetEvent(HANDLE);
+ * BOOL		SetThreadDesktop(HDESK);
+ * void		Sleep(DWORD);
+ * DWORD	WaitForMultipleObjects(DWORD, const HANDLE *, BOOL, DWORD);
+ * DWORD	WaitForSingleObject(HANDLE, DWORD);
+ * BOOL		WaitNamedPipeW(LPCWSTR, DWORD);
+ * BOOL		WriteFile(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
+ */
+#include <shellapi.h>
+/******* """"""""""""
+ * #define SEE_MASK_NOASYNC
+ * #define SEE_MASK_NOCLOSEPROCESS
+ * typedef	SHELLEXECUTEINFOW;
+ * BOOL		ShellExecuteExW(SHELLEXECUTEINFOW *);
+ */
+#include <bcrypt.h>
+/******* """"""""""
+ * #define BCRYPT_USE_SYSTEM_PREFERRED_RNG
+ * NTSTATUS	BCryptGenRandom(BCRYPT_ALG_HANDLE, PUCHAR, ULONG, ULONG);
+ */
+#include <stdio.h>
+/******* """""""""
+ * int	snprintf(char *, size_t, const char *, ...);
+ * int	swprintf(wchar_t *, size_t, const wchar_t *, ...);
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * void	*calloc(size_t, size_t);
+ * void	free(void *);
+ * void	*malloc(size_t);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * int		memcmp(const void *, const void *, size_t);
+ * void		*memcpy(void *, const void *, size_t);
+ * void		*memset(void *, int, size_t);
+ * int		strcmp(const char *, const char *);
+ */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	int32_t;
+ * typedef	uint16_t;
+ * typedef	uint32_t;
+ * typedef	uint8_t;
+ * typedef	uintptr_t;
+ */
+#include <time.h>
+/******* """"""""
+ * struct timeval;
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void	TEXT_ADD(struct S_TEXT *, const char *);
+ * void	TEXT_ADDF(struct S_TEXT *, const char *, ...);
+ * void	TEXT_ADDN(struct S_TEXT *, const char *, size_t);
+ * void	TEXT_FREE(struct S_TEXT *);
+ */
+#include "lang.h"
+/******* """"""""
+ * enum E_STR;
+ * const char	*LANG(enum E_STR);
+ */
+#include "console.h"
+/******* """""""""""
+ * CRITICAL_SECTION	G_CONSOLE_LOCK;
+ * char				G_HOST_STATUS[64];
+ * void				NOTIFY(const char *, ...);
+ * const char		*SYM(const char *, const char *);
+ */
+#include "net.h"
+/******* """""""
+ * struct S_LINK;
+ * void	IP_SHORT(uint32_t, char *, size_t);
+ * void	LINK_FREE(struct S_LINK *);
+ * void	LINK_INIT(struct S_LINK *, SOCKET);
+ * int	LINK_SEND(
+ * 	struct S_LINK *,
+ * 	uint32_t,
+ * 	const void *,
+ * 	uint32_t,
+ * 	const void *,
+ * 	uint32_t
+ * );
+ * int	RECV_ALL(SOCKET, void *, int);
+ * int	RECV_MSG(
+ * 	SOCKET,
+ * 	uint32_t *,
+ * 	uint8_t **,
+ * 	uint32_t *,
+ * 	uint32_t *,
+ * 	uint32_t
+ * );
+ * int	SEND_ALL(SOCKET, const void *, int);
+ */
+#include "codec.h"
+/******* """""""""
+ * struct S_JPEG;
+ * size_t	ENCODE_TILE(const uint32_t *, int, int, int, uint8_t *);
+ * void		JPEG_CLOSE(struct S_JPEG *);
+ * int		JPEG_ENCODE(
+ * 	struct S_JPEG *,
+ * 	const uint32_t *,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	struct S_TEXT *
+ * );
+ * int		JPEG_OPEN(struct S_JPEG *);
+ */
+#include "clipboard.h"
+/******* """""""""""""
+ * #define CLIP_CHUNK
+ * #define CLIP_MAX_TEXT
+ * struct S_CLIP;
+ * void				CLIP_RECEIVE(
+ * 	struct S_CLIP *,
+ * 	uint32_t,
+ * 	const uint8_t *,
+ * 	uint32_t
+ * );
+ * struct S_CLIP	*CLIP_START(struct S_LINK *, const char *);
+ * void				CLIP_STOP(struct S_CLIP *);
+ */
+#include "htmlui.h"
+/******* """"""""""
+ * int	HTMLUI_ASK(SOCKET, const char *);
+ * void	HTMLUI_BANNER_HIDE(void);
+ * void	HTMLUI_BANNER_SHOW(const char *, SOCKET);
+ */
+#include "host.h"
+/******* """"""""
+ * void		HOST_START(void);
+ * int		HOST_TAKE_OVER(const char *);
+ * DWORD	HOST_THREAD(LPVOID);
+ * SOCKET	OPEN_LISTENER(void);
+ */
+#include "service.h"
+/******* """""""""""
+ * int	SERVICE_IS_ADMIN(void);
+ */
+#include "update.h"
+/******* """"""""""
+ * int	UPDATE_DUE(void);
+ * void	UPDATE_NOW(void);
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
 /* **************************** [v] GLOBALS [v] ***************************** */
-volatile LONG	G_RUNNING = 0;
-int		G_WORKER = 0;
-int		G_CODE = 0;
-SOCKET		G_LISTEN = INVALID_SOCKET;
-static volatile LONG	G__BUSY__ = 0;	/* A REQUEST OR SESSION IS OPEN */
-static int		G__WRONG_IN_A_ROW__ = 0;	/* GUARDED BY G__BUSY__ */
+volatile LONG			G_RUNNING = 0;
+int						G_WORKER = 0;
+int						G_BACKGROUND = 0;
+int						G_CODE = 0;
+SOCKET					G_LISTEN = INVALID_SOCKET;
+static volatile LONG	G__BUSY__ = 0; /* A REQUEST OR SESSION IS OPEN */
+static int				G__WRONG_IN_A_ROW__ = 0; /* GUARDED BY G__BUSY__ */
+static volatile LONG	G__UPDATING_SINCE__ = 0; /* TICK, 0 = NOT UPDATING */
 /* **************************** [^] GLOBALS [^] ***************************** */
 
 /* .,,,,. #==========================================================# .,,,,. */
@@ -112,8 +446,8 @@ static void
 	static const DWORD	UP[3] = {
 		MOUSEEVENTF_LEFTUP, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_MIDDLEUP
 	};
-	HANDLE			EVENT;
-	INPUT			ACTION;
+	HANDLE	EVENT;
+	INPUT	ACTION;
 
 	memset(&ACTION, 0, sizeof(ACTION));
 	switch (M->TYPE)
@@ -164,11 +498,11 @@ static DWORD WINAPI
 {
 	struct S_SESSION	*SESSION;
 	struct S_INPUT_MSG	M;
-	HDESK			DESK;
-	uint8_t			*BUFFER;
-	uint32_t		CAP;
-	uint32_t		SIZE;
-	uint32_t		TYPE;
+	HDESK				DESK;
+	uint8_t				*BUFFER;
+	uint32_t			CAP;
+	uint32_t			SIZE;
+	uint32_t			TYPE;
 
 	SESSION = (struct S_SESSION *)PARAMETER;
 	DESK = NULL;
@@ -207,8 +541,8 @@ static DWORD WINAPI
 /*   \/   #==========================================================#   \/   */
 struct	S_CAPTURE
 {
-	HDC		SCREEN;
-	HDC		MEMORY;
+	HDC			SCREEN;
+	HDC			MEMORY;
 	HBITMAP		DIB;
 	HGDIOBJ		OLD;
 	uint32_t	*PIXELS;
@@ -340,9 +674,9 @@ struct	S_GRID
 {
 	int		COLS;
 	int		ROWS;
-	uint8_t		*CHANGED;
-	uint8_t		*LOSSY;
-	uint8_t		*QUIET;	/* FRAMES SINCE THE LAST CHANGE, UP TO 255 */
+	uint8_t	*CHANGED;
+	uint8_t	*LOSSY;
+	uint8_t	*QUIET; /* FRAMES SINCE THE LAST CHANGE, UP TO 255 */
 };
 
 static int
@@ -419,18 +753,18 @@ static uint32_t
 	)
 {
 	uint32_t	TILES;
-	int		ROW;
-	int		END;
-	int		FROM;
-	int		TO;
-	int		F2;
-	int		T2;
-	int		X;
-	int		Y;
-	int		W;
-	int		H;
-	int		TX;
-	int		TY;
+	int			ROW;
+	int			END;
+	int			FROM;
+	int			TO;
+	int			F2;
+	int			T2;
+	int			X;
+	int			Y;
+	int			W;
+	int			H;
+	int			TX;
+	int			TY;
 
 	TILES = 0;
 	for (ROW = 0; ROW < G->ROWS; ROW = END)
@@ -498,8 +832,8 @@ static uint32_t
 	)
 {
 	uint32_t	TILES;
-	int		BUDGET;
-	int		T;
+	int			BUDGET;
+	int			T;
 
 	TILES = 0;
 	BUDGET = (G->COLS * G->ROWS) / 4 + 16;
@@ -535,14 +869,14 @@ static int
 	)
 {
 	size_t	OFF;
-	int	COUNT;
-	int	TX;
-	int	TY;
-	int	TW;
-	int	TH;
-	int	Y;
-	int	T;
-	int	CHANGED;
+	int		COUNT;
+	int		TX;
+	int		TY;
+	int		TW;
+	int		TH;
+	int		Y;
+	int		T;
+	int		CHANGED;
 
 	COUNT = 0;
 	for (TY = 0; TY < G->ROWS; ++TY)
@@ -586,7 +920,7 @@ static int
 static void
 	SERVE(SOCKET S, const char *WHO)
 {
-	int32_t			HELLO[3];
+	int32_t				HELLO[3];
 	struct S_CAPTURE	CAP;
 	struct S_LINK		LINK;
 	struct S_SESSION	SESSION;
@@ -594,21 +928,21 @@ static void
 	struct S_GRID		GRID;
 	struct S_TEXT		FRAME = {0};
 	struct S_TEXT		SCRATCH = {0};
-	HDESK			DESK;
-	HANDLE			INPUT;
-	BOOL			NO_DELAY;
-	int			BUFFER_SIZE;
-	uint32_t		*PREV;
-	uint8_t			*PACKED;
-	uint32_t		TILES;
-	DWORD			T0;
-	DWORD			DT;
-	DWORD			WAIT;
-	int			W;
-	int			H;
-	int			COUNT;
-	int			FIRST;
-	int			HAVE_JPEG;
+	HDESK				DESK;
+	HANDLE				INPUT;
+	BOOL				NO_DELAY;
+	int					BUFFER_SIZE;
+	uint32_t			*PREV;
+	uint8_t				*PACKED;
+	uint32_t			TILES;
+	DWORD				T0;
+	DWORD				DT;
+	DWORD				WAIT;
+	int					W;
+	int					H;
+	int					COUNT;
+	int					FIRST;
+	int					HAVE_JPEG;
 
 	W = GetSystemMetrics(SM_CXSCREEN);
 	H = GetSystemMetrics(SM_CYSCREEN);
@@ -750,8 +1084,471 @@ static void
 /* '""""' #==========================================================# '""""' */
 
 /* .,,,,. #==========================================================# .,,,,. */
+/*  \\//  |               ADMIN RIGHTS FOR ONE SESSION               |  \\//  */
+/*   \/   #==========================================================#   \/   */
+/*
+# WINDOWS DOES NOT LET A NORMAL PROGRAM CLICK OR TYPE INTO ADMIN WINDOWS, SO A
+# NORMAL INWAY ASKS FOR ADMIN RIGHTS WHEN A SESSION STARTS:
+# 1. IT OPENS A PIPE AND STARTS "INWAY.EXE -SERVE <PIPE>" AS ADMIN, HIDDEN.
+# 2. YES: THE ADMIN COPY GETS A LOCAL PORT (127.0.0.1) AND A SECRET THROUGH
+#    THE PIPE, CONNECTS THERE AND SENDS THE SECRET FIRST. THIS COPY THEN JUST
+#    PASSES THE BYTES BETWEEN THE OTHER PC AND THE ADMIN COPY.
+# 3. NO, OR NO ANSWER IN INWAY_ADMIN_SECONDS: THE PIPE IS CLOSED AND THIS COPY
+#    SERVES THE SESSION ITSELF. AN ADMIN COPY THAT STARTS TOO LATE FINDS NO
+#    PIPE AND ENDS.
+# A SOCKET CAN NOT SIMPLY BE HANDED TO THE ADMIN COPY: A NORMAL PROGRAM MAY
+# NOT GIVE HANDLES TO AN ADMIN ONE, AND A TAKEN ONE IS NOT RELIABLE.
+*/
+#define SECRET_BYTES 16
+
+struct	S_HANDOVER
+{
+	uint32_t	PORT; /* WHERE THE ADMIN COPY CONNECTS, ON 127.0.0.1 */
+	uint8_t		SECRET[SECRET_BYTES]; /* IT SENDS THIS FIRST */
+	char		WHO[24];
+};
+
+struct	S_RUNAS
+{
+	volatile LONG	REFS; /* THE THREAD AND ADMIN_HANDOVER: LAST ONE FREES */
+	WCHAR			PARAMETERS[96];
+	HANDLE			PROCESS;
+};
+
+struct	S_PUMP
+{
+	SOCKET	FROM;
+	SOCKET	TO;
+};
+
+static void
+	RUNAS_RELEASE(struct S_RUNAS *R)
+{
+	if (InterlockedDecrement(&R->REFS) == 0)
+	{
+		if (R->PROCESS)
+		{
+			CloseHandle(R->PROCESS);
+		}
+		free(R);
+	}
+}
+
+/* THE YES / NO QUESTION BLOCKS UNTIL IT IS ANSWERED: IT GETS ITS OWN THREAD */
+static DWORD WINAPI
+	RUNAS_THREAD(LPVOID PARAMETER)
+{
+	struct S_RUNAS		*R;
+	SHELLEXECUTEINFOW	SEI;
+	WCHAR				EXE[MAX_PATH];
+	DWORD				RESULT;
+
+	R = (struct S_RUNAS *)PARAMETER;
+	EXE[0] = L'\0';
+	GetModuleFileNameW(NULL, EXE, MAX_PATH);
+	memset(&SEI, 0, sizeof(SEI));
+	SEI.cbSize = sizeof(SEI);
+	SEI.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC;
+	SEI.lpVerb = L"runas";
+	SEI.lpFile = EXE;
+	SEI.lpParameters = R->PARAMETERS;
+	SEI.nShow = SW_HIDE;
+	RESULT = ShellExecuteExW(&SEI) ? 1 : 0;
+	R->PROCESS = SEI.hProcess;
+	RUNAS_RELEASE(R);
+	return (RESULT); /* 0 = NO, OR IT COULD NOT START */
+}
+
+/* ONE READ OR WRITE ON THE PIPE, WITH A TIME LIMIT */
+static int
+	PIPE_IO(HANDLE PIPE, void *BUFFER, DWORD SIZE, int WRITE, DWORD MS)
+{
+	OVERLAPPED	OV;
+	DWORD		DONE;
+	BOOL		OK;
+
+	memset(&OV, 0, sizeof(OV));
+	OV.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+	if (!OV.hEvent)
+	{
+		return (0);
+	}
+	if (WRITE)
+	{
+		OK = WriteFile(PIPE, BUFFER, SIZE, NULL, &OV);
+	}
+	else
+	{
+		OK = ReadFile(PIPE, BUFFER, SIZE, NULL, &OV);
+	}
+	if (!OK && GetLastError() == ERROR_IO_PENDING &&
+		WaitForSingleObject(OV.hEvent, MS) != WAIT_OBJECT_0)
+	{
+		CancelIo(PIPE);
+	}
+	DONE = 0;
+	OK = GetOverlappedResult(PIPE, &OV, &DONE, TRUE);
+	CloseHandle(OV.hEvent);
+	return (OK && DONE == SIZE);
+}
+
+/* A PORT ON 127.0.0.1 THAT ONLY THIS PC CAN REACH */
+static SOCKET
+	LOCAL_LISTENER(uint32_t *PORT)
+{
+	SOCKET				LS;
+	struct sockaddr_in	A;
+	int					SIZE;
+
+	LS = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (LS == INVALID_SOCKET)
+	{
+		return (INVALID_SOCKET);
+	}
+	memset(&A, 0, sizeof(A));
+	A.sin_family = AF_INET;
+	A.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	SIZE = sizeof(A);
+	if (bind(LS, (struct sockaddr *)&A, sizeof(A)) != 0 ||
+		listen(LS, 1) != 0 ||
+		getsockname(LS, (struct sockaddr *)&A, &SIZE) != 0)
+	{
+		closesocket(LS);
+		return (INVALID_SOCKET);
+	}
+	*PORT = ntohs(A.sin_port);
+	return (LS);
+}
+
+/* THE ADMIN COPY'S CONNECTION, ONCE IT SENT THE RIGHT SECRET */
+static SOCKET
+	ACCEPT_ADMIN(SOCKET LS, const uint8_t *SECRET)
+{
+	fd_set			READY;
+	struct timeval	TV;
+	SOCKET			L;
+	DWORD			TIMEOUT;
+	uint8_t			GOT[SECRET_BYTES];
+
+	FD_ZERO(&READY);
+	FD_SET(LS, &READY);
+	TV.tv_sec = 10;
+	TV.tv_usec = 0;
+	if (select(0, &READY, NULL, NULL, &TV) != 1)
+	{
+		return (INVALID_SOCKET);
+	}
+	L = accept(LS, NULL, NULL);
+	if (L == INVALID_SOCKET)
+	{
+		return (INVALID_SOCKET);
+	}
+	TIMEOUT = 5000;
+	setsockopt(L, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
+	if (!RECV_ALL(L, GOT, SECRET_BYTES) || memcmp(GOT, SECRET, SECRET_BYTES))
+	{
+		closesocket(L);
+		return (INVALID_SOCKET);
+	}
+	TIMEOUT = 0;
+	setsockopt(L, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
+	return (L);
+}
+
+/*
+# ASKS FOR ADMIN RIGHTS. YES: RETURNS THE ADMIN COPY'S PROCESS AND ITS LOCAL
+# CONNECTION IN *LOCAL. NO: NULL, THEN SERVE IT WITH NORMAL RIGHTS.
+*/
+static HANDLE
+	ADMIN_HANDOVER(const char *WHO, SOCKET *LOCAL)
+{
+	struct S_HANDOVER	H;
+	struct S_RUNAS		*R;
+	OVERLAPPED			OV;
+	SOCKET				LS;
+	HANDLE				PIPE;
+	HANDLE				THREAD;
+	HANDLE				WAIT[2];
+	HANDLE				CHILD;
+	WCHAR				NAME[48];
+	WCHAR				PATH[64];
+	DWORD				HOW;
+	DWORD				DONE;
+	DWORD				STARTED;
+	uint32_t			REPLY[2];
+
+	*LOCAL = INVALID_SOCKET;
+	memset(&H, 0, sizeof(H));
+	snprintf(H.WHO, sizeof(H.WHO), "%s", WHO);
+	if (BCryptGenRandom(NULL, H.SECRET, SECRET_BYTES,
+		BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0)
+	{
+		return (NULL);
+	}
+	LS = LOCAL_LISTENER(&H.PORT);
+	if (LS == INVALID_SOCKET)
+	{
+		return (NULL);
+	}
+	swprintf(
+		NAME,
+		48,
+		L"INWAY-%lu-%lu",
+		(unsigned long)GetCurrentProcessId(),
+		(unsigned long)GetTickCount()
+	);
+	swprintf(PATH, 64, L"\\\\.\\pipe\\%ls", NAME);
+	PIPE = CreateNamedPipeW(
+		PATH,
+		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED |
+		FILE_FLAG_FIRST_PIPE_INSTANCE,
+		PIPE_TYPE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+		1,
+		256,
+		256,
+		0,
+		NULL
+	);
+	R = (struct S_RUNAS *)calloc(1, sizeof(*R));
+	memset(&OV, 0, sizeof(OV));
+	OV.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+	THREAD = NULL;
+	if (PIPE != INVALID_HANDLE_VALUE && R && OV.hEvent)
+	{
+		R->REFS = 2;
+		swprintf(R->PARAMETERS, 96, L"-serve %ls", NAME);
+		THREAD = CreateThread(NULL, 0, RUNAS_THREAD, R, 0, NULL);
+	}
+	if (!THREAD)
+	{
+		free(R);
+		if (OV.hEvent)
+		{
+			CloseHandle(OV.hEvent);
+		}
+		if (PIPE != INVALID_HANDLE_VALUE)
+		{
+			CloseHandle(PIPE);
+		}
+		closesocket(LS);
+		return (NULL);
+	}
+	if (!ConnectNamedPipe(PIPE, &OV) && GetLastError() == ERROR_PIPE_CONNECTED)
+	{
+		SetEvent(OV.hEvent);
+	}
+	WAIT[0] = OV.hEvent;
+	WAIT[1] = THREAD;
+	HOW = WaitForMultipleObjects(2, WAIT, FALSE, INWAY_ADMIN_SECONDS * 1000);
+	STARTED = 0;
+	if (HOW == WAIT_OBJECT_0 + 1 && GetExitCodeThread(THREAD, &STARTED) &&
+		STARTED)
+	{
+		/* YES WAS CLICKED: GIVE THE ADMIN COPY A MOMENT TO CONNECT */
+		HOW = WaitForSingleObject(OV.hEvent, 15000);
+	}
+	CHILD = NULL;
+	if (HOW == WAIT_OBJECT_0)
+	{
+		REPLY[0] = 0;
+		if (PIPE_IO(PIPE, &H, sizeof(H), 1, 5000) &&
+			(*LOCAL = ACCEPT_ADMIN(LS, H.SECRET)) != INVALID_SOCKET &&
+			PIPE_IO(PIPE, REPLY, sizeof(REPLY), 0, 10000) && REPLY[0] == 1)
+		{
+			CHILD = OpenProcess(SYNCHRONIZE, FALSE, REPLY[1]);
+		}
+	}
+	else
+	{
+		CancelIo(PIPE); /* NOBODY CAME: STOP WAITING FOR A CONNECTION */
+		GetOverlappedResult(PIPE, &OV, &DONE, TRUE);
+	}
+	if (!CHILD && *LOCAL != INVALID_SOCKET)
+	{
+		closesocket(*LOCAL);
+		*LOCAL = INVALID_SOCKET;
+	}
+	closesocket(LS);
+	CloseHandle(PIPE);
+	CloseHandle(OV.hEvent);
+	CloseHandle(THREAD);
+	RUNAS_RELEASE(R);
+	return (CHILD);
+}
+
+static DWORD WINAPI
+	PUMP_THREAD(LPVOID PARAMETER)
+{
+	struct S_PUMP	*P;
+	char			*BUFFER;
+	int				GOT;
+
+	P = (struct S_PUMP *)PARAMETER;
+	BUFFER = (char *)malloc(1 << 16);
+	while (BUFFER && (GOT = recv(P->FROM, BUFFER, 1 << 16, 0)) > 0)
+	{
+		if (!SEND_ALL(P->TO, BUFFER, GOT))
+		{
+			break ;
+		}
+	}
+	free(BUFFER);
+	shutdown(P->FROM, SD_BOTH); /* ONE SIDE ENDED: END BOTH */
+	shutdown(P->TO, SD_BOTH);
+	return (0);
+}
+
+/* PASSES BYTES BOTH WAYS UNTIL ONE SIDE HANGS UP */
+static void
+	RELAY(SOCKET S, SOCKET L)
+{
+	struct S_PUMP	UP;
+	struct S_PUMP	DOWN;
+	HANDLE			T;
+	BOOL			NO_DELAY;
+	int				BUFFER_SIZE;
+
+	NO_DELAY = TRUE;
+	BUFFER_SIZE = 4 << 20;
+	setsockopt(S, IPPROTO_TCP, TCP_NODELAY, (char *)&NO_DELAY, sizeof(BOOL));
+	setsockopt(L, IPPROTO_TCP, TCP_NODELAY, (char *)&NO_DELAY, sizeof(BOOL));
+	setsockopt(
+		S,
+		SOL_SOCKET,
+		SO_SNDBUF,
+		(char *)&BUFFER_SIZE,
+		sizeof(BUFFER_SIZE)
+	);
+	UP.FROM = S; /* MOUSE, KEYS AND CLIPBOARD TO THE ADMIN COPY */
+	UP.TO = L;
+	DOWN.FROM = L; /* THE SCREEN TO THE OTHER PC */
+	DOWN.TO = S;
+	T = CreateThread(NULL, 0, PUMP_THREAD, &UP, 0, NULL);
+	PUMP_THREAD(&DOWN);
+	if (T)
+	{
+		WaitForSingleObject(T, INFINITE);
+		CloseHandle(T);
+	}
+}
+
+/* "INWAY.EXE -SERVE <PIPE>": THE ADMIN COPY. 0 = IT SERVED A SESSION. */
+int
+	HOST_TAKE_OVER(const char *PIPE_NAME)
+{
+	struct S_HANDOVER	H;
+	struct sockaddr_in	A;
+	HANDLE				PIPE;
+	SOCKET				L;
+	WCHAR				PATH[64];
+	DWORD				DONE;
+	uint32_t			REPLY[2];
+	size_t				I;
+	char				CH;
+
+	for (I = 0; PIPE_NAME[I]; ++I)
+	{
+		CH = PIPE_NAME[I];
+		if (!((CH >= '0' && CH <= '9') || (CH >= 'A' && CH <= 'Z') ||
+			CH == '-') || I >= 40)
+		{
+			return (1);
+		}
+	}
+	swprintf(PATH, 64, L"\\\\.\\pipe\\%hs", PIPE_NAME);
+	if (!I || !WaitNamedPipeW(PATH, 5000))
+	{
+		return (1);
+	}
+	PIPE = CreateFileW(
+		PATH,
+		GENERIC_READ | GENERIC_WRITE,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		0,
+		NULL
+	);
+	if (PIPE == INVALID_HANDLE_VALUE)
+	{
+		return (1);
+	}
+	L = INVALID_SOCKET;
+	if (ReadFile(PIPE, &H, sizeof(H), &DONE, NULL) && DONE == sizeof(H) &&
+		H.PORT > 0 && H.PORT < 65536)
+	{
+		L = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		memset(&A, 0, sizeof(A));
+		A.sin_family = AF_INET;
+		A.sin_port = htons((u_short)H.PORT);
+		A.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		if (L != INVALID_SOCKET &&
+			(connect(L, (struct sockaddr *)&A, sizeof(A)) != 0 ||
+			!SEND_ALL(L, H.SECRET, SECRET_BYTES)))
+		{
+			closesocket(L);
+			L = INVALID_SOCKET;
+		}
+	}
+	REPLY[0] = (L != INVALID_SOCKET);
+	REPLY[1] = GetCurrentProcessId();
+	WriteFile(PIPE, REPLY, sizeof(REPLY), &DONE, NULL);
+	CloseHandle(PIPE);
+	if (L == INVALID_SOCKET)
+	{
+		return (1);
+	}
+	H.WHO[sizeof(H.WHO) - 1] = '\0';
+	SERVE(L, H.WHO);
+	closesocket(L);
+	return (0);
+}
+/*   /\   #==========================================================#   /\   */
+/*  //\\  |               ADMIN RIGHTS FOR ONE SESSION               |  //\\  */
+/* '""""' #==========================================================# '""""' */
+
+/* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                      ONE CONNECTION                      |  \\//  */
 /*   \/   #==========================================================#   \/   */
+static DWORD WINAPI
+	SERVER_UPDATE_THREAD(LPVOID PARAMETER)
+{
+	(void)PARAMETER;
+	Sleep(500); /* LET THE "UPDATING" ANSWER GO OUT FIRST */
+	UPDATE_NOW();
+	InterlockedExchange(&G__UPDATING_SINCE__, 0); /* IT DID NOT WORK OUT */
+	return (0);
+}
+
+/*
+# A SERVER LOOKS FOR A NEW INWAY JUST BEFORE IT LETS SOMEONE IN. IS ONE OUT,
+# IT UPDATES FIRST AND ANSWERS "UPDATING": THEIR INWAY CONNECTS AGAIN BY
+# ITSELF. FOR UP TO 2 MINUTES, EVERYONE ELSE GETS THE SAME ANSWER.
+*/
+static int
+	SERVER_UPDATING(void)
+{
+	DWORD	SINCE;
+	HANDLE	T;
+
+	SINCE = (DWORD)G__UPDATING_SINCE__;
+	if (SINCE && GetTickCount() - SINCE < 120000)
+	{
+		return (1);
+	}
+	if (!UPDATE_DUE())
+	{
+		return (0);
+	}
+	InterlockedExchange(&G__UPDATING_SINCE__, (LONG)(GetTickCount() | 1));
+	T = CreateThread(NULL, 0, SERVER_UPDATE_THREAD, NULL, 0, NULL);
+	if (T)
+	{
+		CloseHandle(T);
+	}
+	return (1);
+}
+
 /* {MAGIC, VALUE, VALUE} INSTEAD OF A SCREEN SIZE, THEN HANG UP */
 static void
 	REPLY(SOCKET S, int32_t VALUE)
@@ -782,13 +1579,15 @@ static void
 static DWORD WINAPI
 	CONNECTION_THREAD(LPVOID PARAMETER)
 {
-	SOCKET			S;
+	SOCKET				S;
 	struct sockaddr_in	PEER;
-	int			SIZE;
-	char			WHO[24];
-	DWORD			TIMEOUT;
-	int32_t			GOT;
-	int			ANSWER;
+	int					SIZE;
+	char				WHO[24];
+	DWORD				TIMEOUT;
+	int32_t				GOT;
+	int					ANSWER;
+	HANDLE				ADMIN;
+	SOCKET				LOCAL;
 
 	S = (SOCKET)(uintptr_t)PARAMETER;
 	memset(&PEER, 0, sizeof(PEER));
@@ -813,11 +1612,11 @@ static DWORD WINAPI
 	}
 	TIMEOUT = 0;
 	setsockopt(S, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
-	if (GOT == 0 && G_WORKER)
+	if (GOT == 0 && (G_WORKER || G_BACKGROUND))
 	{
-		REPLY(S, REPLY_NEED_CODE); /* NOBODY THERE TO CLICK */
-		closesocket(S);
 		InterlockedExchange(&G__BUSY__, 0);
+		REPLY(S, REPLY_NEED_CODE); /* A SERVER: ONLY ITS CODE WORKS */
+		closesocket(S);
 		return (0);
 	}
 	if (GOT == 0)
@@ -826,6 +1625,7 @@ static DWORD WINAPI
 		ANSWER = HTMLUI_ASK(S, WHO);
 		if (ANSWER != 1)
 		{
+			InterlockedExchange(&G__BUSY__, 0);
 			if (ANSWER == 0)
 			{
 				REPLY(S, REPLY_DECLINED);
@@ -836,7 +1636,6 @@ static DWORD WINAPI
 				TELL("{d}", STR_N_GAVE_UP, WHO);
 			}
 			closesocket(S);
-			InterlockedExchange(&G__BUSY__, 0);
 			return (0);
 		}
 	}
@@ -845,12 +1644,30 @@ static DWORD WINAPI
 		TELL("{r}", STR_N_WRONG, WHO);
 		/* SLOW DOWN GUESSING, A LOT AFTER 5 WRONG CODES IN A ROW */
 		Sleep(++G__WRONG_IN_A_ROW__ >= 5 ? 30000 : 2000);
+		InterlockedExchange(&G__BUSY__, 0);
 		REPLY(S, REPLY_WRONG_CODE);
 		closesocket(S);
-		InterlockedExchange(&G__BUSY__, 0);
 		return (0);
 	}
 	G__WRONG_IN_A_ROW__ = 0;
+	if ((G_WORKER || G_BACKGROUND) && SERVER_UPDATING())
+	{
+		InterlockedExchange(&G__BUSY__, 0);
+		REPLY(S, REPLY_UPDATING); /* THEIR INWAY TRIES AGAIN BY ITSELF */
+		closesocket(S);
+		return (0);
+	}
+	ADMIN = NULL;
+	LOCAL = INVALID_SOCKET;
+	if (!G_WORKER && !G_BACKGROUND && !SERVICE_IS_ADMIN())
+	{
+		TELL("{c}", STR_N_ADMIN_ASK, WHO);
+		ADMIN = ADMIN_HANDOVER(WHO, &LOCAL);
+		if (!ADMIN)
+		{
+			TELL("{d}", STR_N_ADMIN_NO, WHO);
+		}
+	}
 	EnterCriticalSection(&G_CONSOLE_LOCK);
 	snprintf(G_HOST_STATUS, sizeof(G_HOST_STATUS), "%s", WHO);
 	LeaveCriticalSection(&G_CONSOLE_LOCK);
@@ -859,7 +1676,20 @@ static DWORD WINAPI
 	{
 		HTMLUI_BANNER_SHOW(WHO, S); /* "2.253 IS CONTROLLING THIS PC" */
 	}
-	SERVE(S, WHO);
+	if (ADMIN)
+	{
+		/* THE ADMIN COPY SERVES; "DISCONNECT" STILL WORKS FROM HERE */
+		InterlockedExchange(&G_RUNNING, 1);
+		RELAY(S, LOCAL);
+		closesocket(LOCAL);
+		WaitForSingleObject(ADMIN, 5000);
+		CloseHandle(ADMIN);
+		InterlockedExchange(&G_RUNNING, 0);
+	}
+	else
+	{
+		SERVE(S, WHO);
+	}
 	if (!G_WORKER)
 	{
 		HTMLUI_BANNER_HIDE();
@@ -882,7 +1712,7 @@ static DWORD WINAPI
 SOCKET
 	OPEN_LISTENER(void)
 {
-	SOCKET		LS;
+	SOCKET				LS;
 	struct sockaddr_in	A;
 
 	LS = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

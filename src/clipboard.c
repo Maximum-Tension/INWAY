@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - CLIPBOARD                                  #       Maximum Tension       #
+# C - clipboard                                  #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,39 +8,264 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                CLIPBOARD                                 |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| CLIPBOARD SYNC. A HIDDEN WINDOW IN ITS OWN THREAD WATCHES THE CLIPBOARD  |*|
-|*| AND ALSO PUTS THINGS ON IT (THE CLIPBOARD WANTS A WINDOW). FILES ARE     |*|
-|*| SENT BY ONE MORE THREAD, SO A BIG COPY NEVER STOPS THE SCREEN OR THE     |*|
-|*| MOUSE.                                                                   |*|
-|*| WHEN THIS SIDE PUTS SOMETHING ON THE CLIPBOARD, IT REMEMBERS THE         |*|
-|*| CLIPBOARD'S SEQUENCE NUMBER, SO THAT CHANGE IS NOT SENT BACK AGAIN.      |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| struct S_CLIP *CLIP_START(struct S_LINK *LINK, const char *WHO);    : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# CLIPBOARD SYNC. A HIDDEN WINDOW IN ITS OWN THREAD WATCHES THE CLIPBOARD AND
+# ALSO PUTS THINGS ON IT (THE CLIPBOARD WANTS A WINDOW). FILES ARE SENT BY ONE
+# MORE THREAD, SO A BIG COPY NEVER STOPS THE SCREEN OR THE MOUSE.
+# WHEN THIS SIDE PUTS SOMETHING ON THE CLIPBOARD, IT REMEMBERS THE CLIPBOARD'S
+# SEQUENCE NUMBER, SO THAT CHANGE IS NOT SENT BACK AGAIN.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * LINK_SEND(), NOTIFY(), G_WORKER
+ * #define _WIN32_WINNT
+ * #define COBJMACROS
+ * #define MSG_CLIP_ABORT
+ * #define MSG_CLIP_BEGIN
+ * #define MSG_CLIP_DATA
+ * #define MSG_CLIP_END
+ * #define MSG_CLIP_FILE
+ * #define MSG_CLIP_TEXT
+ * #define WIN32_LEAN_AND_MEAN
+ * struct S_CLIP_FILE;
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define CALLBACK
+ * #define CF_HDROP
+ * #define CF_UNICODETEXT
+ * #define CREATE_ALWAYS
+ * #define FALSE
+ * #define FILE_ATTRIBUTE_DIRECTORY
+ * #define FILE_ATTRIBUTE_NORMAL
+ * #define FILE_FLAG_SEQUENTIAL_SCAN
+ * #define FILE_SHARE_DELETE
+ * #define FILE_SHARE_READ
+ * #define FILE_SHARE_WRITE
+ * #define GENERIC_READ
+ * #define GENERIC_WRITE
+ * #define GHND
+ * #define GMEM_MOVEABLE
+ * #define GWLP_USERDATA
+ * #define HWND_MESSAGE
+ * #define InterlockedCompareExchange
+ * #define InterlockedExchange
+ * #define InterlockedIncrement
+ * #define INVALID_FILE_ATTRIBUTES
+ * #define INVALID_HANDLE_VALUE
+ * #define MAX_PATH
+ * #define OPEN_EXISTING
+ * #define S_OK
+ * #define SMTO_ABORTIFHUNG
+ * #define TRUE
+ * #define WINAPI
+ * #define WM_CLIPBOARDUPDATE
+ * #define WM_CLOSE
+ * #define WM_DESTROY
+ * #define WM_NULL
+ * #define WM_TIMER
+ * typedef	DWORD;
+ * typedef	FILETIME;
+ * typedef	HANDLE;
+ * typedef	HGLOBAL;
+ * typedef	HWND;
+ * typedef	LARGE_INTEGER;
+ * typedef	LONG;
+ * typedef	LONG_PTR;
+ * typedef	LPARAM;
+ * typedef	LPVOID;
+ * typedef	LRESULT;
+ * typedef	MSG;
+ * typedef	UINT;
+ * typedef	ULARGE_INTEGER;
+ * typedef	WCHAR;
+ * typedef	WIN32_FIND_DATAW;
+ * typedef	WNDCLASSW;
+ * typedef	WPARAM;
+ * BOOL		AddClipboardFormatListener(HWND);
+ * BOOL		CloseClipboard(void);
+ * BOOL		CloseHandle(HANDLE);
+ * BOOL		CreateDirectoryW(LPCWSTR, LPSECURITY_ATTRIBUTES);
+ * HANDLE	CreateEventW(LPSECURITY_ATTRIBUTES, BOOL, BOOL, LPCWSTR);
+ * HANDLE	CreateFileW(
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	DWORD,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	DWORD,
+ * 	DWORD,
+ * 	HANDLE
+ * );
+ * HANDLE	CreateThread(
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	SIZE_T,
+ * 	LPTHREAD_START_ROUTINE,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	LPDWORD
+ * );
+ * HWND		CreateWindowExW(
+ * 	DWORD,
+ * 	LPCWSTR,
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	HWND,
+ * 	HMENU,
+ * 	HINSTANCE,
+ * 	LPVOID
+ * );
+ * LRESULT	DefWindowProcW(HWND, UINT, WPARAM, LPARAM);
+ * BOOL		DeleteFileW(LPCWSTR);
+ * BOOL		DestroyWindow(HWND);
+ * LRESULT	DispatchMessageW(const MSG *);
+ * BOOL		EmptyClipboard(void);
+ * BOOL		FindClose(HANDLE);
+ * HANDLE	FindFirstFileW(LPCWSTR, LPWIN32_FIND_DATAW);
+ * BOOL		FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
+ * HANDLE	GetClipboardData(UINT);
+ * HWND		GetClipboardOwner(void);
+ * DWORD	GetClipboardSequenceNumber(void);
+ * DWORD	GetCurrentProcessId(void);
+ * DWORD	GetEnvironmentVariableW(LPCWSTR, LPWSTR, DWORD);
+ * DWORD	GetFileAttributesW(LPCWSTR);
+ * BOOL		GetFileSizeEx(HANDLE, PLARGE_INTEGER);
+ * BOOL		GetMessageW(LPMSG, HWND, UINT, UINT);
+ * HMODULE	GetModuleHandleW(LPCWSTR);
+ * void		GetSystemTimeAsFileTime(LPFILETIME);
+ * DWORD	GetTempPathW(DWORD, LPWSTR);
+ * LONG_PTR	GetWindowLongPtrW(HWND, int);
+ * HGLOBAL	GlobalAlloc(UINT, SIZE_T);
+ * HGLOBAL	GlobalFree(HGLOBAL);
+ * LPVOID	GlobalLock(HGLOBAL);
+ * BOOL		GlobalUnlock(HGLOBAL);
+ * BOOL		IsClipboardFormatAvailable(UINT);
+ * BOOL		KillTimer(HWND, UINT_PTR);
+ * int		lstrcmpW(LPCWSTR, LPCWSTR);
+ * int		lstrlenW(LPCWSTR);
+ * BOOL		OpenClipboard(HWND);
+ * BOOL		PostMessageW(HWND, UINT, WPARAM, LPARAM);
+ * void		PostQuitMessage(int);
+ * BOOL		ReadFile(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);
+ * ATOM		RegisterClassW(const WNDCLASSW *);
+ * UINT		RegisterClipboardFormatW(LPCWSTR);
+ * BOOL		RemoveClipboardFormatListener(HWND);
+ * BOOL		RemoveDirectoryW(LPCWSTR);
+ * LRESULT	SendMessageTimeoutW(
+ * 	HWND,
+ * 	UINT,
+ * 	WPARAM,
+ * 	LPARAM,
+ * 	UINT,
+ * 	UINT,
+ * 	PDWORD_PTR
+ * );
+ * HANDLE	SetClipboardData(UINT, HANDLE);
+ * BOOL		SetEvent(HANDLE);
+ * BOOL		SetFileAttributesW(LPCWSTR, DWORD);
+ * UINT_PTR	SetTimer(HWND, UINT_PTR, UINT, TIMERPROC);
+ * LONG_PTR	SetWindowLongPtrW(HWND, int, LONG_PTR);
+ * void		Sleep(DWORD);
+ * DWORD	WaitForSingleObject(HANDLE, DWORD);
+ * BOOL		WriteFile(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
+ */
+#include <shellapi.h>
+/******* """"""""""""
+ * typedef	HDROP;
+ * UINT		DragQueryFileW(HDROP, UINT, LPWSTR, UINT);
  */
 #include <shlobj.h>
 /******* """"""""""
- * DROPFILES
+ * typedef	DROPFILES;
+ */
+#include <ole2.h>
+/******* """"""""
+ * #define IDataObject_GetData(This, pformatetcIn, pmedium)
+ * #define IDataObject_Release(This)
+ * enum tagDVASPECT;
+ * enum tagTYMED;
+ * typedef	FORMATETC;
+ * typedef	IDataObject;
+ * typedef	STGMEDIUM;
+ * HRESULT	OleGetClipboard(LPDATAOBJECT *);
+ * HRESULT	OleInitialize(LPVOID);
+ * void		OleUninitialize(void);
+ * void		ReleaseStgMedium(LPSTGMEDIUM);
+ */
+#include <stdio.h>
+/******* """""""""
+ * int	snprintf(char *, size_t, const char *, ...);
+ * int	swprintf(wchar_t *, size_t, const wchar_t *, ...);
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * void	*calloc(size_t, size_t);
+ * void	free(void *);
+ * void	*malloc(size_t);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * void		*memcpy(void *, const void *, size_t);
+ * void		*memset(void *, int, size_t);
+ * wchar_t	*wcschr(const wchar_t *, wchar_t);
+ * wchar_t	*wcsrchr(const wchar_t *, wchar_t);
+ */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	uint32_t;
+ * typedef	uint64_t;
+ * typedef	uint8_t;
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void	TEXT_ADD(struct S_TEXT *, const char *);
+ * void	TEXT_ADDF(struct S_TEXT *, const char *, ...);
+ * void	TEXT_ADDN(struct S_TEXT *, const char *, size_t);
+ * void	TEXT_FREE(struct S_TEXT *);
+ */
+#include "lang.h"
+/******* """"""""
+ * enum E_STR;
+ * const char	*LANG(enum E_STR);
+ */
+#include "console.h"
+/******* """""""""""
+ * void			NOTIFY(const char *, ...);
+ * const char	*SYM(const char *, const char *);
+ */
+#include "net.h"
+/******* """""""
+ * struct S_LINK;
+ * int	LINK_SEND(
+ * 	struct S_LINK *,
+ * 	uint32_t,
+ * 	const void *,
+ * 	uint32_t,
+ * 	const void *,
+ * 	uint32_t
+ * );
+ */
+#include "clipboard.h"
+/******* """""""""""""
+ * #define CLIP_CHUNK
+ * #define CLIP_MAX_FILES
+ * #define CLIP_MAX_TEXT
+ * struct S_CLIP;
+ */
+#include "host.h"
+/******* """"""""
+ * int	G_WORKER;
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
@@ -48,37 +273,39 @@
 #define WM_CLIPBOARDUPDATE 0X031D /* OLD MINGW HEADERS */
 #endif /* !WM_CLIPBOARDUPDATE */
 
-#define WM_CLIP_SET_TEXT	(WM_APP + 1)	/* LPARAM = WCHAR *, FREED */
-#define WM_CLIP_SET_FILES	(WM_APP + 2)	/* LPARAM = LIST, FREED */
-#define CLIP_CLASS		L"INWAY_CLIP"
+#define WM_CLIP_SET_TEXT (WM_APP + 1) /* LPARAM = WCHAR *, FREED */
+#define WM_CLIP_SET_FILES (WM_APP + 2) /* LPARAM = LIST, FREED */
+#define CLIP_TIMER 1 /* READS THE CLIPBOARD A MOMENT AFTER IT CHANGED */
+#define CLIP_SETTLE_MS 150
+#define CLIP_CLASS L"INWAY_CLIP"
 
 struct	S_CLIP
 {
-	struct S_LINK		*LINK;
+	struct S_LINK	*LINK;
 	char			WHO[24];
-	HANDLE			THREAD;		/* THE HIDDEN WINDOW */
+	HANDLE			THREAD; /* THE HIDDEN WINDOW */
 	HANDLE			READY;
 	HWND			WINDOW;
-	volatile LONG		IGNORE_SEQ;	/* OUR OWN LAST CHANGE */
+	volatile LONG	IGNORE_SEQ; /* OUR OWN LAST CHANGE */
 	/* OUTGOING FILES */
 	HANDLE			SENDER;
-	volatile LONG		CANCEL;
+	volatile LONG	CANCEL;
 	uint32_t		NEXT_ID;
 	/* INCOMING FILES, ONLY TOUCHED BY THE NETWORK THREAD */
-	WCHAR			BASE[MAX_PATH];	/* ...\INWAY-CLIPBOARD */
-	WCHAR			IN_DIR[MAX_PATH];	/* FOLDER OF THE CURRENT COPY */
+	WCHAR			BASE[MAX_PATH]; /* ...\INWAY-CLIPBOARD */
+	WCHAR			IN_DIR[MAX_PATH]; /* FOLDER OF THE CURRENT COPY */
 	uint32_t		IN_ID;
-	int			IN_ACTIVE;
+	int				IN_ACTIVE;
 	HANDLE			IN_FILE;
-	struct S_TEXT		IN_TOP;	/* TOP ITEMS, "PATH\0PATH\0" */
-	int			NUMBER;		/* KEEPS FOLDERS OF TWO SESSIONS APART */
+	struct S_TEXT	IN_TOP; /* TOP ITEMS, "PATH\0PATH\0" */
+	int				NUMBER; /* KEEPS FOLDERS OF TWO SESSIONS APART */
 };
 
 struct	S_SEND_JOB
 {
 	struct S_CLIP	*C;
-	WCHAR		*LIST;	/* "PATH\0PATH\0\0" */
-	uint32_t	ID;
+	WCHAR			*LIST; /* "PATH\0PATH\0\0" */
+	uint32_t		ID;
 };
 
 static volatile LONG	G__CLASS_DONE__ = 0;
@@ -124,9 +351,9 @@ static void
 	DELETE_TREE(const WCHAR *PATH)
 {
 	WIN32_FIND_DATAW	FD;
-	HANDLE		FIND;
-	WCHAR		*MASK;
-	WCHAR		*CHILD;
+	HANDLE				FIND;
+	WCHAR				*MASK;
+	WCHAR				*CHILD;
 
 	MASK = JOIN_PATH(PATH, L"*");
 	if (!MASK)
@@ -170,12 +397,12 @@ static void
 	CLEAN_OLD(const WCHAR *BASE)
 {
 	WIN32_FIND_DATAW	FD;
-	HANDLE		FIND;
-	WCHAR		*MASK;
-	WCHAR		*CHILD;
-	FILETIME		NOW;
-	ULARGE_INTEGER	A;
-	ULARGE_INTEGER	B;
+	HANDLE				FIND;
+	WCHAR				*MASK;
+	WCHAR				*CHILD;
+	FILETIME			NOW;
+	ULARGE_INTEGER		A;
+	ULARGE_INTEGER		B;
 
 	GetSystemTimeAsFileTime(&NOW);
 	A.LowPart = NOW.dwLowDateTime;
@@ -395,11 +622,11 @@ static uint64_t
 	MEASURE(const WCHAR *PATH)
 {
 	WIN32_FIND_DATAW	FD;
-	HANDLE		FIND;
-	WCHAR		*MASK;
-	WCHAR		*CHILD;
-	uint64_t		TOTAL;
-	DWORD		ATTR;
+	HANDLE				FIND;
+	WCHAR				*MASK;
+	WCHAR				*CHILD;
+	uint64_t			TOTAL;
+	DWORD				ATTR;
 
 	ATTR = GetFileAttributesW(PATH);
 	if (ATTR == INVALID_FILE_ATTRIBUTES)
@@ -454,16 +681,16 @@ static int
 	struct S_CLIP_FILE	HDR;
 	WIN32_FIND_DATAW	FD;
 	LARGE_INTEGER		SIZE;
-	HANDLE			FIND;
-	HANDLE			FILE_HANDLE;
-	WCHAR			*MASK;
-	WCHAR			*CHILD_FULL;
-	WCHAR			*CHILD_NAME;
-	uint8_t			*PIECE;
-	DWORD			ATTR;
-	DWORD			GOT;
-	uint32_t		NAME_BYTES;
-	int			OK;
+	HANDLE				FIND;
+	HANDLE				FILE_HANDLE;
+	WCHAR				*MASK;
+	WCHAR				*CHILD_FULL;
+	WCHAR				*CHILD_NAME;
+	uint8_t				*PIECE;
+	DWORD				ATTR;
+	DWORD				GOT;
+	uint32_t			NAME_BYTES;
+	int					OK;
 
 	ATTR = GetFileAttributesW(FULL);
 	if (ATTR == INVALID_FILE_ATTRIBUTES)
@@ -554,11 +781,11 @@ static DWORD WINAPI
 	SENDER_THREAD(LPVOID PARAMETER)
 {
 	struct S_SEND_JOB	*JOB;
-	struct S_CLIP	*C;
-	const WCHAR	*P;
-	const WCHAR	*NAME;
-	uint64_t		TOTAL;
-	int		OK;
+	struct S_CLIP		*C;
+	const WCHAR			*P;
+	const WCHAR			*NAME;
+	uint64_t			TOTAL;
+	int					OK;
 
 	JOB = (struct S_SEND_JOB *)PARAMETER;
 	C = JOB->C;
@@ -643,19 +870,83 @@ static void
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                  WATCHING THE CLIPBOARD                  |  \\//  */
 /*   \/   #==========================================================#   \/   */
+/* "PATH\0PATH\0\0" FROM A FILE LIST (CF_HDROP) */
+static WCHAR
+	*DROP_LIST(HDROP DROP)
+{
+	WCHAR	*LIST;
+	UINT	COUNT;
+	UINT	I;
+	UINT	LEN;
+	size_t	CHARS;
+	size_t	AT;
+
+	COUNT = DragQueryFileW(DROP, 0XFFFFFFFF, NULL, 0);
+	if (!COUNT)
+	{
+		return (NULL);
+	}
+	CHARS = 1;
+	for (I = 0; I < COUNT; ++I)
+	{
+		CHARS += DragQueryFileW(DROP, I, NULL, 0) + 1;
+	}
+	LIST = (WCHAR *)calloc(CHARS, sizeof(WCHAR));
+	AT = 0;
+	for (I = 0; LIST && I < COUNT; ++I)
+	{
+		LEN = DragQueryFileW(DROP, I, LIST + AT, (UINT)(CHARS - AT));
+		AT += LEN + 1;
+	}
+	return (LIST);
+}
+
+/*
+# EXPLORER DOES NOT PUT THE FILE LIST ON THE CLIPBOARD RIGHT AWAY: IT MAKES IT
+# WHEN SOMEONE ASKS. WHEN THAT DID NOT WORK, THIS ASKS EXPLORER'S COPIED DATA
+# DIRECTLY, THE SAME WAY EXPLORER ITSELF PASTES.
+*/
+static WCHAR
+	*OLE_FILE_LIST(void)
+{
+	IDataObject	*OBJECT;
+	FORMATETC	FORMAT;
+	STGMEDIUM	MEDIUM;
+	WCHAR		*LIST;
+
+	LIST = NULL;
+	if (OleGetClipboard(&OBJECT) != S_OK)
+	{
+		return (NULL);
+	}
+	FORMAT.cfFormat = CF_HDROP;
+	FORMAT.ptd = NULL;
+	FORMAT.dwAspect = DVASPECT_CONTENT;
+	FORMAT.lindex = -1;
+	FORMAT.tymed = TYMED_HGLOBAL;
+	if (IDataObject_GetData(OBJECT, &FORMAT, &MEDIUM) == S_OK)
+	{
+		if (MEDIUM.tymed == TYMED_HGLOBAL && MEDIUM.hGlobal)
+		{
+			LIST = DROP_LIST((HDROP)MEDIUM.hGlobal);
+		}
+		ReleaseStgMedium(&MEDIUM);
+	}
+	IDataObject_Release(OBJECT);
+	return (LIST);
+}
+
 /* SOMETHING WAS COPIED ON THIS PC */
 static void
 	CLIPBOARD_CHANGED(struct S_CLIP *C)
 {
 	HANDLE		DATA;
+	HWND		OWNER;
 	const WCHAR	*TEXT;
 	WCHAR		*COPY;
 	WCHAR		*LIST;
-	UINT		COUNT;
-	UINT		I;
-	UINT		LEN;
 	size_t		CHARS;
-	size_t		AT;
+	int			FILES;
 
 	if ((LONG)GetClipboardSequenceNumber() == C->IGNORE_SEQ)
 	{
@@ -667,22 +958,24 @@ static void
 	}
 	COPY = NULL;
 	LIST = NULL;
-	if (IsClipboardFormatAvailable(CF_HDROP) &&
-		(DATA = GetClipboardData(CF_HDROP)) != NULL)
+	FILES = IsClipboardFormatAvailable(CF_HDROP);
+	if (FILES)
 	{
-		COUNT = DragQueryFileW((HDROP)DATA, 0XFFFFFFFF, NULL, 0);
-		CHARS = 1;
-		for (I = 0; I < COUNT; ++I)
+		DATA = GetClipboardData(CF_HDROP);
+		OWNER = GetClipboardOwner();
+		if (!DATA && OWNER && SendMessageTimeoutW(
+			OWNER,
+			WM_NULL,
+			0,
+			0,
+			SMTO_ABORTIFHUNG,
+			3000,
+			NULL
+		))
 		{
-			CHARS += DragQueryFileW((HDROP)DATA, I, NULL, 0) + 1;
+			DATA = GetClipboardData(CF_HDROP); /* IT WAS STILL MAKING IT */
 		}
-		LIST = (WCHAR *)calloc(CHARS, sizeof(WCHAR));
-		AT = 0;
-		for (I = 0; LIST && I < COUNT; ++I)
-		{
-			LEN = DragQueryFileW((HDROP)DATA, I, LIST + AT, (UINT)(CHARS - AT));
-			AT += LEN + 1;
-		}
+		LIST = DATA ? DROP_LIST((HDROP)DATA) : NULL;
 	}
 	else if (IsClipboardFormatAvailable(CF_UNICODETEXT) &&
 		(DATA = GetClipboardData(CF_UNICODETEXT)) != NULL)
@@ -703,6 +996,15 @@ static void
 		}
 	}
 	CloseClipboard();
+	if (FILES && !LIST)
+	{
+		LIST = OLE_FILE_LIST();
+		if (!LIST)
+		{
+			TELL(STR_C_CANT_READ, C->WHO);
+			return ;
+		}
+	}
 	if (LIST)
 	{
 		START_SENDER(C, LIST);
@@ -731,9 +1033,17 @@ static LRESULT CALLBACK
 	switch (MSG)
 	{
 		case (WM_CLIPBOARDUPDATE):
-			if (C)
+			/* WAIT A MOMENT: A COPY OFTEN CHANGES THE CLIPBOARD A FEW TIMES */
+			SetTimer(WINDOW, CLIP_TIMER, CLIP_SETTLE_MS, NULL);
+			return (0);
+		case (WM_TIMER):
+			if (WP == CLIP_TIMER)
 			{
-				CLIPBOARD_CHANGED(C);
+				KillTimer(WINDOW, CLIP_TIMER);
+				if (C)
+				{
+					CLIPBOARD_CHANGED(C);
+				}
 			}
 			return (0);
 		case (WM_CLIP_SET_TEXT):
@@ -765,10 +1075,11 @@ static DWORD WINAPI
 	WINDOW_THREAD(LPVOID PARAMETER)
 {
 	struct S_CLIP	*C;
-	WNDCLASSW	WC;
-	MSG		M;
+	WNDCLASSW		WC;
+	MSG				M;
 
 	C = (struct S_CLIP *)PARAMETER;
+	OleInitialize(NULL); /* FOR OLE_FILE_LIST() */
 	if (InterlockedCompareExchange(&G__CLASS_DONE__, 1, 0) == 0)
 	{
 		memset(&WC, 0, sizeof(WC));
@@ -799,12 +1110,14 @@ static DWORD WINAPI
 	SetEvent(C->READY);
 	if (!C->WINDOW)
 	{
+		OleUninitialize();
 		return (0);
 	}
 	while (GetMessageW(&M, NULL, 0, 0) > 0)
 	{
 		DispatchMessageW(&M);
 	}
+	OleUninitialize();
 	return (0);
 }
 /*   /\   #==========================================================#   /\   */
@@ -842,6 +1155,7 @@ static void
 		C->NUMBER,
 		(unsigned long)ID
 	);
+	DELETE_TREE(C->IN_DIR); /* A LEFTOVER WITH THE SAME NAME */
 	CreateDirectoryW(C->IN_DIR, NULL);
 	C->IN_ID = ID;
 	C->IN_ACTIVE = 1;
@@ -852,9 +1166,9 @@ static void
 	GOT_FILE(struct S_CLIP *C, const uint8_t *DATA, uint32_t SIZE)
 {
 	struct S_CLIP_FILE	HDR;
-	WCHAR			*NAME;
-	WCHAR			*FULL;
-	size_t			CHARS;
+	WCHAR				*NAME;
+	WCHAR				*FULL;
+	size_t				CHARS;
 
 	if (SIZE < sizeof(HDR) + 2)
 	{
@@ -1011,8 +1325,8 @@ struct S_CLIP
 	*CLIP_START(struct S_LINK *LINK, const char *WHO)
 {
 	struct S_CLIP	*C;
-	WCHAR		ROOT[MAX_PATH];
-	DWORD		LEN;
+	WCHAR			ROOT[MAX_PATH];
+	DWORD			LEN;
 
 	C = (struct S_CLIP *)calloc(1, sizeof(*C));
 	if (!C)

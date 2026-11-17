@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - LANG                                       #       Maximum Tension       #
+# C - lang                                       #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,33 +8,32 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                   LANG                                   |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| THE ENGLISH AND TURKISH STRING TABLES. THE TABLES USE [STR_NAME] = "..." |*|
-|*| SO THE ORDER CAN NEVER GET MIXED UP. A MISSING TURKISH STRING FALLS BACK |*|
-|*| TO ENGLISH. COLOUR MARKS LIKE {Y} BELONG TO THE CALLER, NOT TO THE       |*|
-|*| STRINGS.                                                                 |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| const char *LANG(enum E_STR ID);                                    : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# THE ENGLISH AND TURKISH STRING TABLES. THE TABLES USE [STR_NAME] = "..." SO
+# THE ORDER CAN NEVER GET MIXED UP. A MISSING TURKISH STRING FALLS BACK TO
+# ENGLISH. COLOUR MARKS LIKE {Y} BELONG TO THE CALLER, NOT TO THE STRINGS.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * enum E_STR
+ * #define _WIN32_WINNT
+ * #define WIN32_LEAN_AND_MEAN
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define LANG_TURKISH
+ * #define PRIMARYLANGID(lgid)
+ * typedef	LANGID;
+ * LANGID	GetUserDefaultUILanguage(void);
+ */
+#include "lang.h"
+/******* """"""""
+ * enum E_STR;
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
@@ -155,6 +154,18 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_I_TAKEOVER] =
 		"Is INWAY also open in a normal window on this PC? Close it: the "
 		"background sharing takes over in a few seconds.",
+	[STR_I_PERMISSION_INSTALL] =
+		"Windows asks for admin rights now. Yes: the full server, also on "
+		"the lock screen. No: a normal server that runs while you are "
+		"signed in.",
+	[STR_I_USER_SETUP] = "Setting it up to start when you sign in ...",
+	[STR_I_USER_FAIL] = "Could not set it up to start when you sign in.",
+	[STR_I_USER_DONE] =
+		"This PC is now shared while you are signed in, with normal rights: "
+		"admin windows and the lock screen can not be used.",
+	[STR_I_USER_UPGRADE] =
+		"For the full server, run the same -install again and click Yes.",
+	[STR_I_USER_REMOVED] = "The normal server is removed.",
 
 	[STR_PRESS_ENTER_CLOSE] = "Press Enter to close.",
 	[STR_PRESS_ENTER] = "Press Enter to continue.",
@@ -173,13 +184,29 @@ static const char	*const G__EN__[STR__COUNT] =
 		"  INWAY.exe -uninstall          remove that again\n"
 		"  INWAY.exe -removeold          remove the old CONNECT tool\n"
 		"  INWAY.exe -lang tr            language: en or tr\n"
-		"  INWAY.exe -noupdate           do not look for a new version\n",
+		"  INWAY.exe -noupdate           do not look for a new version\n"
+		"\n"
+		"  Use INWAY only on PCs you own or are allowed to control.\n"
+		"  See DISCLAIMER.md.\n",
 	[STR_U_FOUND] = "A new INWAY is out (%s). Updating ...",
 	[STR_U_FAILED] = "The update did not work. Starting this version.",
 	[STR_U_DONE] = "INWAY is updated to %s.",
 	[STR_C_SENT] = "The files you copied are ready to paste on %s.",
 	[STR_C_GOT] = "Files copied on %s are ready to paste here.",
-	[STR_C_TOO_BIG] = "Those files are over 4 GB, too big to copy to %s."
+	[STR_C_TOO_BIG] = "Those files are over 4 GB, too big to copy to %s.",
+	[STR_C_CANT_READ] =
+		"Files were copied, but INWAY could not read them to send to %s.",
+	[STR_N_ADMIN_ASK] =
+		"Windows asks now if %s may use admin rights. Yes: full control. "
+		"No: normal rights.",
+	[STR_N_ADMIN_NO] =
+		"%s has normal rights: admin windows can not be used.",
+	[STR_SVC_USER_HINT] = "Always on while you are signed in.",
+	[STR_UPDATING_WAIT] =
+		"%s is updating INWAY first. Connecting again in a moment ...",
+	[STR_R_UPDATING_T] = "UPDATING",
+	[STR_R_UPDATING] =
+		"%s is still updating INWAY. Try again in a minute."
 };
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         ENGLISH                          |  //\\  */
@@ -306,6 +333,18 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_I_TAKEOVER] =
 		"INWAY bu bilgisayarda normal bir pencerede de açık mı? Kapatın: "
 		"arka plan paylaşımı birkaç saniye içinde devralır.",
+	[STR_I_PERMISSION_INSTALL] =
+		"Windows şimdi yönetici izni soruyor. Evet: tam sunucu, kilit "
+		"ekranında da. Hayır: oturum açıkken çalışan normal bir sunucu.",
+	[STR_I_USER_SETUP] = "Oturum açılınca başlaması ayarlanıyor ...",
+	[STR_I_USER_FAIL] = "Oturum açılınca başlaması ayarlanamadı.",
+	[STR_I_USER_DONE] =
+		"Bu bilgisayar artık oturum açıkken normal yetkiyle paylaşılıyor: "
+		"yönetici pencereleri ve kilit ekranı kullanılamaz.",
+	[STR_I_USER_UPGRADE] =
+		"Tam sunucu için aynı -install komutunu tekrar çalıştırıp Evet'e "
+		"tıklayın.",
+	[STR_I_USER_REMOVED] = "Normal sunucu kaldırıldı.",
 
 	[STR_PRESS_ENTER_CLOSE] = "Kapatmak için Enter'a basın.",
 	[STR_PRESS_ENTER] = "Devam etmek için Enter'a basın.",
@@ -324,14 +363,31 @@ static const char	*const G__TR__[STR__COUNT] =
 		"  INWAY.exe -uninstall          bunu geri kaldır\n"
 		"  INWAY.exe -removeold          eski CONNECT aracını kaldır\n"
 		"  INWAY.exe -lang en            dil: en ya da tr\n"
-		"  INWAY.exe -noupdate           yeni sürüm arama\n",
+		"  INWAY.exe -noupdate           yeni sürüm arama\n"
+		"\n"
+		"  INWAY'i yalnızca size ait ya da kontrol etme izniniz olan\n"
+		"  bilgisayarlarda kullanın. Bkz. DISCLAIMER.md.\n",
 	[STR_U_FOUND] = "Yeni INWAY çıktı (%s). Güncelleniyor ...",
 	[STR_U_FAILED] = "Güncelleme olmadı. Bu sürümle devam ediliyor.",
 	[STR_U_DONE] = "INWAY %s sürümüne güncellendi.",
 	[STR_C_SENT] = "Kopyaladığınız dosyalar %s üzerinde yapıştırılmaya hazır.",
 	[STR_C_GOT] =
 		"%s üzerinde kopyalanan dosyalar burada yapıştırılmaya hazır.",
-	[STR_C_TOO_BIG] = "Bu dosyalar 4 GB'tan büyük, %s tarafına aktarılamaz."
+	[STR_C_TOO_BIG] = "Bu dosyalar 4 GB'tan büyük, %s tarafına aktarılamaz.",
+	[STR_C_CANT_READ] =
+		"Dosyalar kopyalandı ama INWAY onları %s tarafına göndermek için "
+		"okuyamadı.",
+	[STR_N_ADMIN_ASK] =
+		"Windows şimdi %s için yönetici izni soruyor. Evet: tam kontrol. "
+		"Hayır: normal yetki.",
+	[STR_N_ADMIN_NO] =
+		"%s normal yetkiyle bağlı: yönetici pencereleri kullanılamaz.",
+	[STR_SVC_USER_HINT] = "Oturum açıkken hep açık.",
+	[STR_UPDATING_WAIT] =
+		"%s önce INWAY'i güncelliyor. Birazdan yeniden bağlanılıyor ...",
+	[STR_R_UPDATING_T] = "GÜNCELLENİYOR",
+	[STR_R_UPDATING] =
+		"%s hâlâ INWAY'i güncelliyor. Bir dakika sonra tekrar deneyin."
 };
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         TURKISH                          |  //\\  */

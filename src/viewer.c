@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - VIEWER                                     #       Maximum Tension       #
+# C - viewer                                     #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,51 +8,362 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                  VIEWER                                  |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| THE REMOTE SCREEN WINDOW. ONE THREAD RECEIVES AND UNPACKS TILES, THE     |*|
-|*| MAIN THREAD RUNS THE WINDOW AND SENDS MOUSE AND KEYS.                    |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| enum E_RESULT VIEWER_CONNECT(uint32_t IP, int32_t CODE,             : *|
-|* : 3|                              const char *LABEL);                    : *|
-|* : 4|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# THE REMOTE SCREEN WINDOW. ONE THREAD RECEIVES AND UNPACKS TILES, THE MAIN
+# THREAD RUNS THE WINDOW AND SENDS MOUSE AND KEYS.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * DECODE_TILE(), JPEG_DECODE(), CLIP_START()
+ * #define _WIN32_WINNT
+ * #define IN_BUTTON
+ * #define IN_KEY
+ * #define IN_MOVE
+ * #define IN_SAS
+ * #define IN_WHEEL
+ * #define INWAY_ADMIN_SECONDS
+ * #define INWAY_ASK_SECONDS
+ * #define INWAY_MAGIC
+ * #define INWAY_PORT
+ * #define INWAY_TILE
+ * #define MSG_CLIP_ABORT
+ * #define MSG_CLIP_TEXT
+ * #define MSG_FRAME
+ * #define MSG_INPUT
+ * #define REPLY_BUSY
+ * #define REPLY_DECLINED
+ * #define REPLY_NEED_CODE
+ * #define REPLY_UPDATING
+ * #define REPLY_WRONG_CODE
+ * #define TILE_JPEG
+ * #define WIN32_LEAN_AND_MEAN
+ * enum E_RESULT;
+ * struct S_INPUT_MSG;
+ * struct S_TILE_HDR;
+ */
+#include <winsock2.h>
+/******* """"""""""""
+ * #define AF_INET
+ * #define FD_ISSET(fd, set)
+ * #define FD_SET(fd, set)
+ * #define FD_ZERO(set)
+ * #define FIONBIO
+ * #define INVALID_SOCKET
+ * #define IPPROTO_TCP
+ * #define SD_BOTH
+ * #define SO_RCVBUF
+ * #define SO_RCVTIMEO
+ * #define SOCK_STREAM
+ * #define SOL_SOCKET
+ * #define TCP_NODELAY
+ * typedef	fd_set;
+ * typedef	SOCKET;
+ * struct sockaddr;
+ * struct sockaddr_in;
+ * typedef	u_long;
+ * int		closesocket(SOCKET);
+ * int		connect(SOCKET, const struct sockaddr *, int);
+ * u_long	htonl(u_long);
+ * u_short	htons(u_short);
+ * int		ioctlsocket(SOCKET, long, u_long *);
+ * int		recv(SOCKET, char *, int, int);
+ * int		select(int, fd_set *, fd_set *, fd_set *, const TIMEVAL *);
+ * int		setsockopt(SOCKET, int, int, const char *, int);
+ * int		shutdown(SOCKET, int);
+ * SOCKET	socket(int, int, int);
+ * int		WSAGetLastError(void);
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define BI_RGB
+ * #define BLACK_BRUSH
+ * #define CALLBACK
+ * #define COLORONCOLOR
+ * #define CS_HREDRAW
+ * #define CS_VREDRAW
+ * #define CTRL_BREAK_EVENT
+ * #define CTRL_C_EVENT
+ * #define CW_USEDEFAULT
+ * #define DIB_RGB_COLORS
+ * #define FALSE
+ * #define GET_WHEEL_DELTA_WPARAM(wParam)
+ * #define HALFTONE
+ * #define HC_ACTION
+ * #define IDC_ARROW
+ * #define InterlockedExchange
+ * #define LLKHF_INJECTED
+ * #define LoadCursor
+ * #define LOWORD(l)
+ * #define MAKEINTRESOURCEW(i)
+ * #define MB_ICONINFORMATION
+ * #define MB_OK
+ * #define MF_STRING
+ * #define SPI_GETWORKAREA
+ * #define SRCCOPY
+ * #define SW_HIDE
+ * #define TRUE
+ * #define VK_CONTROL
+ * #define VK_END
+ * #define VK_LWIN
+ * #define VK_MENU
+ * #define VK_RWIN
+ * #define WH_KEYBOARD_LL
+ * #define WINAPI
+ * #define WM_APP
+ * #define WM_CLOSE
+ * #define WM_COMMAND
+ * #define WM_DESTROY
+ * #define WM_ERASEBKGND
+ * #define WM_KEYDOWN
+ * #define WM_KEYUP
+ * #define WM_LBUTTONDOWN
+ * #define WM_LBUTTONUP
+ * #define WM_MBUTTONDOWN
+ * #define WM_MBUTTONUP
+ * #define WM_MOUSEMOVE
+ * #define WM_MOUSEWHEEL
+ * #define WM_PAINT
+ * #define WM_RBUTTONDOWN
+ * #define WM_RBUTTONUP
+ * #define WM_SYSCHAR
+ * #define WM_SYSKEYDOWN
+ * #define WM_SYSKEYUP
+ * #define WM_TIMER
+ * #define WS_OVERLAPPEDWINDOW
+ * #define WS_VISIBLE
+ * #define WSAETIMEDOUT
+ * #define WSAEWOULDBLOCK
+ * typedef	BITMAPINFO;
+ * typedef	BITMAPINFOHEADER;
+ * typedef	BOOL;
+ * typedef	CRITICAL_SECTION;
+ * typedef	DWORD;
+ * typedef	HANDLE;
+ * typedef	HBRUSH;
+ * typedef	HDC;
+ * typedef	HHOOK;
+ * typedef	HMENU;
+ * typedef	HWND;
+ * typedef	KBDLLHOOKSTRUCT;
+ * typedef	LONG;
+ * typedef	LPARAM;
+ * typedef	LPVOID;
+ * typedef	LRESULT;
+ * typedef	MSG;
+ * typedef	PAINTSTRUCT;
+ * typedef	RECT;
+ * typedef	UINT;
+ * typedef	WCHAR;
+ * typedef	WNDCLASSW;
+ * typedef	WPARAM;
+ * BOOL		AdjustWindowRect(LPRECT, DWORD, BOOL);
+ * BOOL		AppendMenuW(HMENU, UINT, UINT_PTR, LPCWSTR);
+ * HDC		BeginPaint(HWND, LPPAINTSTRUCT);
+ * LRESULT	CallNextHookEx(HHOOK, int, WPARAM, LPARAM);
+ * BOOL		CloseHandle(HANDLE);
+ * HMENU	CreateMenu(void);
+ * HANDLE	CreateThread(
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	SIZE_T,
+ * 	LPTHREAD_START_ROUTINE,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	LPDWORD
+ * );
+ * HWND		CreateWindowExW(
+ * 	DWORD,
+ * 	LPCWSTR,
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	HWND,
+ * 	HMENU,
+ * 	HINSTANCE,
+ * 	LPVOID
+ * );
+ * LRESULT	DefWindowProcW(HWND, UINT, WPARAM, LPARAM);
+ * BOOL		DestroyWindow(HWND);
+ * LRESULT	DispatchMessageW(const MSG *);
+ * BOOL		EndPaint(HWND, const PAINTSTRUCT *);
+ * void		EnterCriticalSection(LPCRITICAL_SECTION);
+ * int		ExcludeClipRect(HDC, int, int, int, int);
+ * int		FillRect(HDC, const RECT *, HBRUSH);
+ * BOOL		GetClientRect(HWND, LPRECT);
+ * HWND		GetConsoleWindow(void);
+ * HWND		GetForegroundWindow(void);
+ * SHORT	GetKeyState(int);
+ * BOOL		GetMessageW(LPMSG, HWND, UINT, UINT);
+ * HMODULE	GetModuleHandleW(LPCWSTR);
+ * HGDIOBJ	GetStockObject(int);
+ * DWORD	GetTickCount(void);
+ * void		InitializeCriticalSection(LPCRITICAL_SECTION);
+ * BOOL		InvalidateRect(HWND, const RECT *, BOOL);
+ * void		LeaveCriticalSection(LPCRITICAL_SECTION);
+ * HICON	LoadIconW(HINSTANCE, LPCWSTR);
+ * int		MessageBoxW(HWND, LPCWSTR, LPCWSTR, UINT);
+ * BOOL		PostMessageW(HWND, UINT, WPARAM, LPARAM);
+ * void		PostQuitMessage(int);
+ * ATOM		RegisterClassW(const WNDCLASSW *);
+ * BOOL		ReleaseCapture(void);
+ * BOOL		SetBrushOrgEx(HDC, int, int, LPPOINT);
+ * HWND		SetCapture(HWND);
+ * BOOL		SetConsoleCtrlHandler(PHANDLER_ROUTINE, BOOL);
+ * BOOL		SetForegroundWindow(HWND);
+ * int		SetStretchBltMode(HDC, int);
+ * UINT_PTR	SetTimer(HWND, UINT_PTR, UINT, TIMERPROC);
+ * HHOOK	SetWindowsHookExW(int, HOOKPROC, HINSTANCE, DWORD);
+ * BOOL		ShowWindow(HWND, int);
+ * void		Sleep(DWORD);
+ * int		StretchDIBits(
+ * 	HDC,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	int,
+ * 	const void *,
+ * 	const BITMAPINFO *,
+ * 	UINT,
+ * 	DWORD
+ * );
+ * BOOL		SystemParametersInfoW(UINT, UINT, PVOID, UINT);
+ * BOOL		TranslateMessage(const MSG *);
+ * BOOL		UnhookWindowsHookEx(HHOOK);
+ * DWORD	WaitForSingleObject(HANDLE, DWORD);
+ */
+#include <windowsx.h>
+/******* """"""""""""
+ * #define GET_X_LPARAM(lp)
+ * #define GET_Y_LPARAM(lp)
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * void	*calloc(size_t, size_t);
+ * void	free(void *);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * void		*memcpy(void *, const void *, size_t);
+ * void		*memset(void *, int, size_t);
+ */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	int32_t;
+ * typedef	uint32_t;
+ * typedef	uint8_t;
+ */
+#include <time.h>
+/******* """"""""
+ * struct timeval;
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void		TEXT_ADDF(struct S_TEXT *, const char *, ...);
+ * void		TEXT_FREE(struct S_TEXT *);
+ * WCHAR	*UTF8_TO_WIDE(const char *);
+ */
+#include "lang.h"
+/******* """"""""
+ * enum E_STR;
+ * const char	*LANG(enum E_STR);
+ */
+#include "console.h"
+/******* """""""""""
+ * void			SAY(const char *);
+ * void			SAYF(const char *, ...);
+ * const char	*SYM(const char *, const char *);
+ */
+#include "net.h"
+/******* """""""
+ * struct S_LINK;
+ * void	LINK_FREE(struct S_LINK *);
+ * void	LINK_INIT(struct S_LINK *, SOCKET);
+ * int	LINK_SEND(
+ * 	struct S_LINK *,
+ * 	uint32_t,
+ * 	const void *,
+ * 	uint32_t,
+ * 	const void *,
+ * 	uint32_t
+ * );
+ * int	RECV_MSG(
+ * 	SOCKET,
+ * 	uint32_t *,
+ * 	uint8_t **,
+ * 	uint32_t *,
+ * 	uint32_t *,
+ * 	uint32_t
+ * );
+ * int	SEND_ALL(SOCKET, const void *, int);
+ */
+#include "codec.h"
+/******* """""""""
+ * struct S_JPEG;
+ * int	DECODE_TILE(const uint8_t *, size_t, uint32_t *, int, int, int);
+ * void	JPEG_CLOSE(struct S_JPEG *);
+ * int	JPEG_DECODE(
+ * 	struct S_JPEG *,
+ * 	const uint8_t *,
+ * 	size_t,
+ * 	uint32_t *,
+ * 	int,
+ * 	int,
+ * 	int
+ * );
+ * int	JPEG_OPEN(struct S_JPEG *);
+ */
+#include "clipboard.h"
+/******* """""""""""""
+ * #define CLIP_CHUNK
+ * #define CLIP_MAX_TEXT
+ * struct S_CLIP;
+ * void				CLIP_RECEIVE(
+ * 	struct S_CLIP *,
+ * 	uint32_t,
+ * 	const uint8_t *,
+ * 	uint32_t
+ * );
+ * struct S_CLIP	*CLIP_START(struct S_LINK *, const char *);
+ * void				CLIP_STOP(struct S_CLIP *);
+ */
+#include "viewer.h"
+/******* """"""""""
+ * enum E_RESULT	VIEWER_CONNECT(uint32_t, int32_t, const char *);
+ * void				VIEWER_INIT(void);
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
-#define ID_SEND_CAD	100
-#define VIEW_CLASS		L"INWAY_VIEW"
+#define ID_SEND_CAD 100
+#define VIEW_CLASS L"INWAY_VIEW"
 
 /* **************************** [v] GLOBALS [v] ***************************** */
-volatile LONG		G_QUIT = 0;
+volatile LONG			G_QUIT = 0;
+int						G_HIDE_CONSOLE = 0;
 static struct S_LINK	G__LINK__;
 static struct S_CLIP	*G__CLIP__ = NULL;
-static int		G__W__ = 0;
-static int		G__H__ = 0;
-static uint32_t		*G__FB__ = NULL;	/* THE OTHER SCREEN, PIXELS */
-static BITMAPINFO	G__BI__;
+static int				G__W__ = 0;
+static int				G__H__ = 0;
+static uint32_t			*G__FB__ = NULL; /* THE OTHER SCREEN, PIXELS */
+static BITMAPINFO		G__BI__;
 static CRITICAL_SECTION	G__FB_LOCK__;
-static HWND		G__HWND__ = NULL;
-static HHOOK		G__HOOK__ = NULL;
-static volatile LONG	G__LAST_MOVING__ = 0;	/* WHEN THE LAST JPEG CAME */
-static volatile LONG	G__NEED_SHARP__ = 0;	/* REDRAW SMOOTH ONCE STILL */
+static HWND				G__HWND__ = NULL;
+static HHOOK			G__HOOK__ = NULL;
+static volatile LONG	G__LAST_MOVING__ = 0; /* WHEN THE LAST JPEG CAME */
+static volatile LONG	G__NEED_SHARP__ = 0; /* REDRAW SMOOTH ONCE STILL */
 /* **************************** [^] GLOBALS [^] ***************************** */
 
 static void
@@ -76,10 +387,10 @@ static RECT
 {
 	RECT	RC;
 	RECT	D;
-	int	CW;
-	int	CH;
-	int	DW;
-	int	DH;
+	int		CW;
+	int		CH;
+	int		DW;
+	int		DH;
 
 	GetClientRect(G__HWND__, &RC);
 	CW = RC.right > 1 ? RC.right : 1;
@@ -102,8 +413,8 @@ static void
 	TO_HOST(LPARAM LP, int *X, int *Y)
 {
 	RECT	D;
-	int	DW;
-	int	DH;
+	int		DW;
+	int		DH;
 
 	D = DEST_RECT();
 	DW = (D.right - D.left) > 1 ? D.right - D.left : 1;
@@ -118,11 +429,11 @@ static void
 	PAINT(HWND HWND_)
 {
 	PAINTSTRUCT	PS;
-	HDC		DC;
+	HDC			DC;
 	RECT		RC;
 	RECT		D;
-	int		DW;
-	int		DH;
+	int			DW;
+	int			DH;
 
 	DC = BeginPaint(HWND_, &PS);
 	GetClientRect(HWND_, &RC);
@@ -274,7 +585,7 @@ static LRESULT CALLBACK
 	KEYBOARD_HOOK(int CODE, WPARAM WP, LPARAM LP)
 {
 	KBDLLHOOKSTRUCT	*K;
-	int		DOWN;
+	int				DOWN;
 
 	if (CODE == HC_ACTION && G__HWND__ && GetForegroundWindow() == G__HWND__)
 	{
@@ -315,8 +626,8 @@ static void
 {
 	RECT	D;
 	RECT	R;
-	int	DW;
-	int	DH;
+	int		DW;
+	int		DH;
 
 	D = DEST_RECT();
 	DW = D.right - D.left;
@@ -333,15 +644,15 @@ static int
 	SHOW_FRAME(struct S_JPEG *JPEG, const uint8_t *DATA, uint32_t SIZE)
 {
 	struct S_TILE_HDR	TH;
-	uint32_t		COUNT;
-	uint32_t		T;
-	size_t			POS;
-	int			OK;
-	int			MOVING;
-	int			X0;
-	int			Y0;
-	int			X1;
-	int			Y1;
+	uint32_t			COUNT;
+	uint32_t			T;
+	size_t				POS;
+	int					OK;
+	int					MOVING;
+	int					X0;
+	int					Y0;
+	int					X1;
+	int					Y1;
 
 	if (SIZE < 4)
 	{
@@ -423,12 +734,12 @@ static DWORD WINAPI
 	RECV_THREAD(LPVOID PARAMETER)
 {
 	struct S_JPEG	JPEG;
-	uint8_t		*BUFFER;
+	uint8_t			*BUFFER;
 	uint32_t		CAP;
 	uint32_t		SIZE;
 	uint32_t		TYPE;
 	uint32_t		MAX;
-	int		HAVE_JPEG;
+	int				HAVE_JPEG;
 
 	(void)PARAMETER;
 	HAVE_JPEG = JPEG_OPEN(&JPEG);
@@ -490,11 +801,11 @@ static int
 	TCP_CONNECT(SOCKET S, uint32_t IP)
 {
 	struct sockaddr_in	A;
-	fd_set		W;
-	fd_set		E;
+	fd_set				W;
+	fd_set				E;
 	struct timeval		TV;
-	u_long		NB;
-	int			OK;
+	u_long				NB;
+	int					OK;
 
 	memset(&A, 0, sizeof(A));
 	A.sin_family = AF_INET;
@@ -523,10 +834,12 @@ static enum E_RESULT
 	READ_HELLO(SOCKET S, int32_t CODE, int32_t *HELLO)
 {
 	DWORD	TIMEOUT;
-	int	GOT;
-	int	N;
+	int		GOT;
+	int		N;
 
-	TIMEOUT = CODE ? 45000 : (INWAY_ASK_SECONDS + 15) * 1000;
+	/* THE OTHER PC MAY FIRST ASK FOR ACCEPT, THEN FOR ADMIN RIGHTS */
+	TIMEOUT = CODE ? (INWAY_ADMIN_SECONDS + 30) * 1000 :
+		(INWAY_ASK_SECONDS + INWAY_ADMIN_SECONDS + 30) * 1000;
 	setsockopt(S, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
 	GOT = 0;
 	N = 0;
@@ -554,6 +867,7 @@ static enum E_RESULT
 		case (REPLY_BUSY): return (CR_BUSY);
 		case (REPLY_WRONG_CODE): return (CR_WRONG_CODE);
 		case (REPLY_NEED_CODE): return (CR_NEED_CODE);
+		case (REPLY_UPDATING): return (CR_UPDATING);
 	}
 	if (HELLO[1] < 0 || HELLO[2] <= 0 || HELLO[1] > 16384 || HELLO[2] > 16384)
 	{
@@ -568,15 +882,15 @@ static HWND
 	OPEN_WINDOW(const char *LABEL)
 {
 	struct S_TEXT	TITLE = {0};
-	WCHAR		*WIDE_TITLE;
-	WCHAR		*WIDE_MENU;
-	HMENU		MENU;
-	HWND		WINDOW;
-	RECT		WA;
-	RECT		R;
-	double		SCALE;
-	double		SX;
-	double		SY;
+	WCHAR			*WIDE_TITLE;
+	WCHAR			*WIDE_MENU;
+	HMENU			MENU;
+	HWND			WINDOW;
+	RECT			WA;
+	RECT			R;
+	double			SCALE;
+	double			SX;
+	double			SY;
 
 	SystemParametersInfoW(SPI_GETWORKAREA, 0, &WA, 0);
 	SX = 0.9 * (WA.right - WA.left) / G__W__;
@@ -620,25 +934,57 @@ static HWND
 enum E_RESULT
 	VIEWER_CONNECT(uint32_t IP, int32_t CODE, const char *LABEL)
 {
-	SOCKET		S;
-	int32_t		HELLO[3];
+	SOCKET			S;
+	int32_t			HELLO[3];
 	enum E_RESULT	RESULT;
-	BOOL		NO_DELAY;
-	int		BUFFER_SIZE;
-	HANDLE		T;
-	MSG		MSG_;
+	BOOL			NO_DELAY;
+	int				BUFFER_SIZE;
+	HANDLE			T;
+	MSG				MSG_;
+	int				UPDATING;
+	int				TRY;
 
-	S = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (S == INVALID_SOCKET)
+	/*
+	# A SERVER MAY ANSWER "UPDATING" AND RESTART WITH THE NEW INWAY: THEN TRY
+	# AGAIN EVERY 3 SECONDS, FOR UP TO 90 SECONDS.
+	*/
+	UPDATING = 0;
+	for (TRY = 0; ; ++TRY)
 	{
-		return (CR_ERROR);
+		if (UPDATING)
+		{
+			Sleep(3000);
+		}
+		S = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (S == INVALID_SOCKET)
+		{
+			return (CR_ERROR);
+		}
+		if (!TCP_CONNECT(S, IP) || !SEND_ALL(S, &CODE, 4))
+		{
+			closesocket(S);
+			if (UPDATING && TRY < 30)
+			{
+				continue ; /* IT IS STILL RESTARTING */
+			}
+			return (UPDATING ? CR_UPDATING : CR_NO_PC);
+		}
+		RESULT = READ_HELLO(S, CODE, HELLO);
+		if ((RESULT == CR_UPDATING || (UPDATING && RESULT == CR_DROPPED)) &&
+			TRY < 30)
+		{
+			closesocket(S);
+			if (!UPDATING)
+			{
+				SAY("  {c}");
+				SAYF(LANG(STR_UPDATING_WAIT), LABEL);
+				SAY("{0}\n");
+			}
+			UPDATING = 1;
+			continue ;
+		}
+		break ;
 	}
-	if (!TCP_CONNECT(S, IP) || !SEND_ALL(S, &CODE, 4))
-	{
-		closesocket(S);
-		return (CR_NO_PC);
-	}
-	RESULT = READ_HELLO(S, CODE, HELLO);
 	if (RESULT != CR_ENDED)
 	{
 		closesocket(S);
@@ -688,6 +1034,10 @@ enum E_RESULT
 	);
 	SAYF("  {g}%s %s{0}\n", SYM("●", "*"), LANG(STR_CONNECTED));
 	SAYF("  {d}%s{0}\n", LANG(STR_CONNECTED_HINT));
+	if (G_HIDE_CONSOLE && GetConsoleWindow())
+	{
+		ShowWindow(GetConsoleWindow(), SW_HIDE); /* ONLY THE SCREEN STAYS */
+	}
 	T = CreateThread(NULL, 0, RECV_THREAD, NULL, 0, NULL);
 	while (GetMessageW(&MSG_, NULL, 0, 0) > 0)
 	{

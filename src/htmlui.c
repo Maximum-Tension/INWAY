@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - HTMLUI                                     #       Maximum Tension       #
+# C - htmlui                                     #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,40 +8,179 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                  HTMLUI                                  |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| SHOWHTMLDIALOG() WRAPPERS FOR THE ACCEPT WINDOW AND THE SESSION BANNER.  |*|
-|*| EACH DIALOG RUNS IN ITS OWN THREAD, SO THE CALLER CAN KEEP WATCHING THE  |*|
-|*| SOCKET AND CLOSE THE DIALOG WHEN THE OTHER SIDE GIVES UP.                |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| int HTMLUI_ASK(SOCKET S, const char *WHO);                          : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# SHOWHTMLDIALOG() WRAPPERS FOR THE ACCEPT WINDOW AND THE SESSION BANNER. EACH
+# DIALOG RUNS IN ITS OWN THREAD, SO THE CALLER CAN KEEP WATCHING THE SOCKET AND
+# CLOSE THE DIALOG WHEN THE OTHER SIDE GIVES UP.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * LANG(), UTF8_TO_WIDE(), G_RUNNING
+ * #define _WIN32_WINNT
+ * #define COBJMACROS
+ * #define INWAY_ASK_SECONDS
+ * #define WIN32_LEAN_AND_MEAN
+ */
+#include <winsock2.h>
+/******* """"""""""""
+ * #define FD_SET(fd, set)
+ * #define FD_ZERO(set)
+ * #define INVALID_SOCKET
+ * #define MSG_PEEK
+ * #define SD_BOTH
+ * typedef	fd_set;
+ * typedef	SOCKET;
+ * int		recv(SOCKET, char *, int, int);
+ * int		select(int, fd_set *, fd_set *, fd_set *, const TIMEVAL *);
+ * int		shutdown(SOCKET, int);
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define CALLBACK
+ * #define CREATE_ALWAYS
+ * #define E_FAIL
+ * #define FAILED(hr)
+ * #define FALSE
+ * #define FILE_ATTRIBUTE_TEMPORARY
+ * #define FLASHW_ALL
+ * #define FLASHW_TIMERNOFG
+ * #define GENERIC_WRITE
+ * #define HWND_TOPMOST
+ * #define IDYES
+ * #define InterlockedExchange
+ * #define INVALID_HANDLE_VALUE
+ * #define MAKEINTRESOURCEW(i)
+ * #define MAX_PATH
+ * #define MB_ICONQUESTION
+ * #define MB_SETFOREGROUND
+ * #define MB_TOPMOST
+ * #define MB_YESNO
+ * #define STDAPICALLTYPE
+ * #define SUCCEEDED(hr)
+ * #define SWP_NOACTIVATE
+ * #define SWP_NOMOVE
+ * #define SWP_NOSIZE
+ * #define SWP_SHOWWINDOW
+ * #define TRUE
+ * #define WAIT_OBJECT_0
+ * #define WAIT_TIMEOUT
+ * #define WINAPI
+ * #define WM_CLOSE
+ * typedef	BOOL;
+ * typedef	DWORD;
+ * typedef	FLASHWINFO;
+ * typedef	HANDLE;
+ * typedef	HGLOBAL;
+ * typedef	HMODULE;
+ * typedef	HRESULT;
+ * typedef	HRSRC;
+ * typedef	HWND;
+ * typedef	LONG;
+ * typedef	LPARAM;
+ * typedef	LPVOID;
+ * typedef	WCHAR;
+ * BOOL		CloseHandle(HANDLE);
+ * HANDLE	CreateFileW(
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	DWORD,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	DWORD,
+ * 	DWORD,
+ * 	HANDLE
+ * );
+ * HANDLE	CreateThread(
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	SIZE_T,
+ * 	LPTHREAD_START_ROUTINE,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	LPDWORD
+ * );
+ * BOOL		DeleteFileW(LPCWSTR);
+ * BOOL		EnumThreadWindows(DWORD, WNDENUMPROC, LPARAM);
+ * HRSRC	FindResourceW(HMODULE, LPCWSTR, LPCWSTR);
+ * BOOL		FlashWindowEx(PFLASHWINFO);
+ * BOOL		FreeLibrary(HMODULE);
+ * int		GetClassNameW(HWND, LPWSTR, int);
+ * DWORD	GetCurrentThreadId(void);
+ * HWND		GetForegroundWindow(void);
+ * DWORD	GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
+ * FARPROC	GetProcAddress(HMODULE, LPCSTR);
+ * DWORD	GetTempPathW(DWORD, LPWSTR);
+ * DWORD	GetTickCount(void);
+ * BOOL		IsWindow(HWND);
+ * HMODULE	LoadLibraryW(LPCWSTR);
+ * HGLOBAL	LoadResource(HMODULE, HRSRC);
+ * LPVOID	LockResource(HGLOBAL);
+ * int		lstrcmpW(LPCWSTR, LPCWSTR);
+ * LPWSTR	lstrcpynW(LPWSTR, LPCWSTR, int);
+ * BOOL		MessageBeep(UINT);
+ * int		MessageBoxW(HWND, LPCWSTR, LPCWSTR, UINT);
+ * BOOL		PostMessageW(HWND, UINT, WPARAM, LPARAM);
+ * BOOL		SetForegroundWindow(HWND);
+ * BOOL		SetWindowPos(HWND, HWND, int, int, int, int, UINT);
+ * DWORD	SizeofResource(HMODULE, HRSRC);
+ * DWORD	WaitForSingleObject(HANDLE, DWORD);
+ * BOOL		WriteFile(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
  */
 #include <ole2.h>
 /******* """"""""
- * OleInitialize(), VARIANT, SysAllocString()
+ * #define IMoniker_Release(This)
+ * enum VARENUM;
+ * typedef	IMoniker;
+ * typedef	VARIANT;
+ * HRESULT	OleInitialize(LPVOID);
+ * void		OleUninitialize(void);
+ * BSTR		SysAllocString(const OLECHAR *);
+ * HRESULT	VariantClear(VARIANTARG *);
+ * void		VariantInit(VARIANTARG *);
  */
-#include <urlmon.h>
+#include <stdio.h>
+/******* """""""""
+ * int	swprintf(wchar_t *, size_t, const wchar_t *, ...);
+ */
+#include <stdlib.h>
 /******* """"""""""
- * CreateURLMoniker()
+ * void	free(void *);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * void		*memset(void *, int, size_t);
+ */
+#include <time.h>
+/******* """"""""
+ * struct timeval;
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void		TEXT_ADD(struct S_TEXT *, const char *);
+ * void		TEXT_ADDF(struct S_TEXT *, const char *, ...);
+ * void		TEXT_FREE(struct S_TEXT *);
+ * WCHAR	*UTF8_TO_WIDE(const char *);
+ */
+#include "lang.h"
+/******* """"""""
+ * enum E_STR;
+ * const char	*LANG(enum E_STR);
+ */
+#include "htmlui.h"
+/******* """"""""""
+ * int	HTMLUI_ASK(SOCKET, const char *);
+ * void	HTMLUI_BANNER_HIDE(void);
+ * void	HTMLUI_BANNER_SHOW(const char *, SOCKET);
+ */
+#include "host.h"
+/******* """"""""
+ * volatile LONG	G_RUNNING;
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
@@ -56,17 +195,17 @@ typedef HRESULT	(STDAPICALLTYPE *T_SHOW_HTML_DIALOG)(
 
 struct	S_DIALOG
 {
-	const WCHAR	*PAGE;		/* RESOURCE NAME, L"ACCEPT.HTM" */
-	WCHAR		*ARGS;		/* WINDOW.DIALOGARGUMENTS */
-	const WCHAR	*OPTIONS;	/* SIZE AND LOOK OF THE WINDOW */
-	WCHAR		RESULT[32];	/* WINDOW.RETURNVALUE */
+	const WCHAR	*PAGE; /* RESOURCE NAME, L"ACCEPT.HTM" */
+	WCHAR		*ARGS; /* WINDOW.DIALOGARGUMENTS */
+	const WCHAR	*OPTIONS; /* SIZE AND LOOK OF THE WINDOW */
+	WCHAR		RESULT[32]; /* WINDOW.RETURNVALUE */
 	HRESULT		HR;
 	HANDLE		THREAD;
 	DWORD		THREAD_ID;
 };
 
 static struct S_DIALOG	G__BANNER__;
-static SOCKET		G__BANNER_SOCKET__ = INVALID_SOCKET;
+static SOCKET			G__BANNER_SOCKET__ = INVALID_SOCKET;
 static volatile LONG	G__BANNER_CLOSING__ = 0;
 
 /* .,,,,. #==========================================================# .,,,,. */
@@ -88,7 +227,7 @@ static int
 	DWORD	SIZE;
 	DWORD	DONE;
 	DWORD	LEN;
-	int	OK;
+	int		OK;
 
 	RESOURCE = FindResourceW(NULL, PAGE, MAKEINTRESOURCEW(23)); /* RT_HTML */
 	DATA = RESOURCE ? LoadResource(NULL, RESOURCE) : NULL;
@@ -161,14 +300,14 @@ static DWORD WINAPI
 	DIALOG_THREAD(LPVOID PARAMETER)
 {
 	struct S_DIALOG		*D;
-	HMODULE			MSHTML;
+	HMODULE				MSHTML;
 	T_SHOW_HTML_DIALOG	SHOW;
-	IMoniker		*MONIKER;
-	VARIANT			V_IN;
-	VARIANT			V_OUT;
-	WCHAR			URL[MAX_PATH * 3 + 64];
-	WCHAR			FILE_PATH[MAX_PATH];
-	int			HAVE_FILE;
+	IMoniker			*MONIKER;
+	VARIANT				V_IN;
+	VARIANT				V_OUT;
+	WCHAR				URL[MAX_PATH * 3 + 64];
+	WCHAR				FILE_PATH[MAX_PATH];
+	int					HAVE_FILE;
 
 	D = (struct S_DIALOG *)PARAMETER;
 	D->HR = E_FAIL;
@@ -251,9 +390,9 @@ static HWND
 static int
 	PEER_GONE(SOCKET S)
 {
-	fd_set		READ;
+	fd_set			READ;
 	struct timeval	TV;
-	char		PEEK;
+	char			PEEK;
 
 	FD_ZERO(&READ);
 	FD_SET(S, &READ);
@@ -276,8 +415,8 @@ static int
 	ASK_FALLBACK(const char *WHO)
 {
 	struct S_TEXT	T = {0};
-	WCHAR		*TEXT;
-	int		ANSWER;
+	WCHAR			*TEXT;
+	int				ANSWER;
 
 	TEXT_ADDF(&T, LANG(STR_H_TITLE), WHO);
 	TEXT_ADD(&T, "\n\n");
@@ -300,10 +439,10 @@ int
 	struct S_DIALOG	D;
 	struct S_TEXT	ARGS = {0};
 	FLASHWINFO		FLASH;
-	DWORD		START;
-	HWND		WINDOW;
-	int		SHOWN;
-	int		GONE;
+	DWORD			START;
+	HWND			WINDOW;
+	int				SHOWN;
+	int				GONE;
 
 	memset(&D, 0, sizeof(D));
 	TEXT_ADDF(
@@ -406,9 +545,9 @@ void
 	HTMLUI_BANNER_SHOW(const char *WHO, SOCKET S)
 {
 	struct S_TEXT	ARGS = {0};
-	HWND		PREVIOUS;
-	HWND		WINDOW;
-	int		I;
+	HWND			PREVIOUS;
+	HWND			WINDOW;
+	int				I;
 
 	HTMLUI_BANNER_HIDE();
 	PREVIOUS = GetForegroundWindow();
@@ -471,7 +610,7 @@ void
 	HTMLUI_BANNER_HIDE(void)
 {
 	HWND	WINDOW;
-	int	I;
+	int		I;
 
 	if (!G__BANNER__.THREAD)
 	{

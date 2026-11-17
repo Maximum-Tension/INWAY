@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - TEXT                                       #       Maximum Tension       #
+# C - text                                       #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,30 +8,64 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                   TEXT                                   |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| GROWING TEXT BUFFER AND UTF-8 / UTF-16 CONVERSION. SEE TEXT.H.           |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| void TEXT_ADD(struct S_TEXT *TEXT, const char *STRING);             : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# GROWING TEXT BUFFER AND UTF-8 / UTF-16 CONVERSION. SEE TEXT.H.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * struct S_TEXT
+ * #define _WIN32_WINNT
+ * #define WIN32_LEAN_AND_MEAN
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define CP_UTF8
+ * typedef	WCHAR;
+ * int		MultiByteToWideChar(UINT, DWORD, LPCCH, int, LPWSTR, int);
+ * int		WideCharToMultiByte(
+ * 	UINT,
+ * 	DWORD,
+ * 	LPCWCH,
+ * 	int,
+ * 	LPSTR,
+ * 	int,
+ * 	LPCCH,
+ * 	LPBOOL
+ * );
+ */
+#include <stdio.h>
+/******* """""""""
+ * int	vsnprintf(char *, size_t, const char *, va_list);
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * void	*calloc(size_t, size_t);
+ * void	free(void *);
+ * void	*malloc(size_t);
+ * void	*realloc(void *, size_t);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * void		*memcpy(void *, const void *, size_t);
+ * size_t	strlen(const char *);
+ */
+#include <stdarg.h>
+/******* """"""""""
+ * #define va_copy(dest, src)
+ * #define va_end(ap)
+ * #define va_start(ap, param)
+ * typedef	va_list;
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
@@ -138,7 +172,7 @@ WCHAR
 char
 	*WIDE_TO_UTF8(const WCHAR *STRING)
 {
-	int	SIZE;
+	int		SIZE;
 	char	*OUTPUT;
 
 	SIZE = WideCharToMultiByte(CP_UTF8, 0, STRING, -1, NULL, 0, NULL, NULL);

@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - CONSOLE                                    #       Maximum Tension       #
+# C - console                                    #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,39 +8,92 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                 CONSOLE                                  |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| COLOURS, BOXES, QUESTIONS AND NOTICES FOR THE BLACK WINDOW. SEE          |*|
-|*| CONSOLE.H FOR THE COLOUR MARKUP.                                         |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| void SAY(const char *MARKUP);                                       : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# COLOURS, BOXES, QUESTIONS AND NOTICES FOR THE BLACK WINDOW. SEE CONSOLE.H FOR
+# THE COLOUR MARKUP.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * struct S_TEXT, LANG()
+ * #define _WIN32_WINNT
+ * #define WIN32_LEAN_AND_MEAN
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define CP_UTF8
+ * #define ENABLE_EXTENDED_FLAGS
+ * #define ENABLE_PROCESSED_OUTPUT
+ * #define ENABLE_QUICK_EDIT_MODE
+ * #define ENABLE_VIRTUAL_TERMINAL_PROCESSING
+ * #define STD_INPUT_HANDLE
+ * #define STD_OUTPUT_HANDLE
+ * typedef	CRITICAL_SECTION;
+ * typedef	DWORD;
+ * typedef	HANDLE;
+ * void		EnterCriticalSection(LPCRITICAL_SECTION);
+ * void		ExitProcess(UINT);
+ * BOOL		GetConsoleMode(HANDLE, LPDWORD);
+ * HANDLE	GetStdHandle(DWORD);
+ * void		InitializeCriticalSection(LPCRITICAL_SECTION);
+ * void		LeaveCriticalSection(LPCRITICAL_SECTION);
+ * BOOL		SetConsoleMode(HANDLE, DWORD);
+ * BOOL		SetConsoleOutputCP(UINT);
+ * BOOL		SetConsoleTitleW(LPCWSTR);
+ * BOOL		WriteFile(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
+ */
+#include <stdio.h>
+/******* """""""""
+ * #define stdin
+ * #define stdout
+ * int		fflush(FILE *);
+ * char		*fgets(char *, int, FILE *);
+ * size_t	fwrite(const void *, size_t, size_t, FILE *);
+ * int		snprintf(char *, size_t, const char *, ...);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * void		*memcpy(void *, const void *, size_t);
+ * size_t	strcspn(const char *, const char *);
+ */
+#include <stdarg.h>
+/******* """"""""""
+ * #define va_end(ap)
+ * #define va_start(ap, param)
+ * typedef	va_list;
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void	TEXT_ADD(struct S_TEXT *, const char *);
+ * void	TEXT_ADDF(struct S_TEXT *, const char *, ...);
+ * void	TEXT_ADDN(struct S_TEXT *, const char *, size_t);
+ * void	TEXT_ADDV(struct S_TEXT *, const char *, va_list);
+ * void	TEXT_FREE(struct S_TEXT *);
+ */
+#include "console.h"
+/******* """""""""""
+ * #define BOX_INNER
+ * CRITICAL_SECTION	G_CONSOLE_LOCK;
+ * char				G_HOST_STATUS[64];
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0X0004 /* OLD MINGW HEADERS */
+#endif /* !ENABLE_VIRTUAL_TERMINAL_PROCESSING */
+
 /* **************************** [v] GLOBALS [v] ***************************** */
-int			G_VT = 0;
+int					G_VT = 0;
 CRITICAL_SECTION	G_CONSOLE_LOCK;
-char			G_HOST_STATUS[64];
-static char		G__PROMPT__[512];	/* QUESTION WAITING FOR AN ANSWER */
+char				G_HOST_STATUS[64];
+static char			G__PROMPT__[512]; /* QUESTION WAITING FOR AN ANSWER */
 /* **************************** [^] GLOBALS [^] ***************************** */
 
 void
@@ -137,7 +190,7 @@ int
 	VISIBLE_LENGTH(const char *MARKUP)
 {
 	const char	*P;
-	int		COUNT;
+	int			COUNT;
 
 	COUNT = 0;
 	P = MARKUP;
@@ -206,7 +259,7 @@ void
 	SAYF(const char *FORMAT, ...)
 {
 	struct S_TEXT	T = {0};
-	va_list		A;
+	va_list			A;
 
 	va_start(A, FORMAT);
 	TEXT_ADDV(&T, FORMAT, A);
@@ -265,7 +318,7 @@ void
 	NOTIFY(const char *FORMAT, ...)
 {
 	struct S_TEXT	T = {0};
-	va_list		A;
+	va_list			A;
 
 	TEXT_ADD(&T, "\n\n");
 	va_start(A, FORMAT);
@@ -337,14 +390,14 @@ static void
 {
 	const int		WIDTH = BOX_INNER - 2;
 	struct S_TEXT	ROW = {0};
-	const char	*P;
-	const char	*Q;
-	const char	*SPACE;
-	const char	*CUT;
-	const char	*NEXT;
-	char		MARK[4];
-	char		CARRY[4];
-	int			COUNT;
+	const char		*P;
+	const char		*Q;
+	const char		*SPACE;
+	const char		*CUT;
+	const char		*NEXT;
+	char			MARK[4];
+	char			CARRY[4];
+	int				COUNT;
 
 	if (!*LINE)
 	{
@@ -426,7 +479,7 @@ void
 	const char	*TR;
 	const char	*BL;
 	const char	*BR;
-	int		I;
+	int			I;
 
 	H = DOUBLE_LINE ? SYM("═", "=") : SYM("─", "-");
 	V = DOUBLE_LINE ? SYM("║", "|") : SYM("│", "|");

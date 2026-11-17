@@ -10,7 +10,10 @@ I made INWAY for the people around me who never used a PC in their lives. When t
 * **Works where others stop.** Installed as a service, it works on the lock screen, the login screen, in Task Manager and in "Do you want to allow this app?" popups, and it can send **`CTRL` + `ALT` + `DEL`**.
 * **Copy here, paste there.** Text, files and folders, both ways, with plain `CTRL` + `C` and `CTRL` + `V`.
 * **Smooth when it matters.** Moving parts of the screen are sent as JPEG, then sent again sharp a moment after they stop.
+* **Admin rights only where they are needed.** INWAY opens without them. The PC being controlled asks for them when a session starts; the PC that connects never needs them.
 * **Updates itself.** It checks the GitHub releases on start and checks every download with the SHA-256 GitHub gives.
+
+> **Use INWAY only on PCs you own, or where the owner and the person at that PC agreed.** See **[DISCLAIMER.md](DISCLAIMER.md)**.
 
 <details>
   <summary><strong>Table of Contents</strong></summary>
@@ -31,6 +34,7 @@ I made INWAY for the people around me who never used a PC in their lives. When t
 - [Languages](#languages)
 - [How it works](#how-it-works)
 - [Security](#security)
+- [Legal](#legal)
 - [Extras](#extras)
 
 </details>
@@ -43,7 +47,7 @@ I made INWAY for the people around me who never used a PC in their lives. When t
 > 
 > **[Latest release][__RELEASES__]**
 
-Put the same `INWAY.exe` on both PCs. When it opens, Windows asks for admin rights: click **Yes**. With them, INWAY can also control admin windows like Task Manager. The first time, Windows also asks if INWAY may use the network: click **Allow access**.
+Put the same `INWAY.exe` on both PCs and open it. It needs no admin rights to open. The first time, Windows asks if INWAY may use the network: click **Allow access**.
 
 ---
 
@@ -65,6 +69,16 @@ Open `INWAY.exe`. Sharing starts by itself. The yellow box shows two things:
 ```
 
 Tell them the **Address**. Then either tell them the **Code** too, or don't, and click **Accept** when the INWAY window pops up on your screen. While someone is connected, a small window in the corner says who it is and has a **Disconnect** button.
+
+When someone connects, Windows asks if INWAY may use **admin rights for that session**:
+
+| Answer                    | What they can do                                                   |
+| ------------------------- | ------------------------------------------------------------------ |
+| **Yes**                   | Everything, also admin windows like Task Manager                   |
+| **No**                    | Everything else. Windows doesn't let them click into admin windows |
+| Nobody answers in 30 sec. | Same as **No**                                                     |
+
+With **Yes**, a hidden admin copy of INWAY serves the session and the normal one passes the data to it inside this PC. The PC that connects never asks for admin rights.
 
 ## Connect to another PC
 
@@ -106,7 +120,7 @@ A code can be written with a space too: `-p 938 572`.
 
 ## Shortcut .bat files
 
-`-c` connects once and closes INWAY when you close the remote window, when the other PC hangs up, or when you press `CTRL` + `C`. So a shortcut is one line:
+`-c` connects once and closes INWAY when you close the remote window or when the other PC hangs up. Once connected, the black window hides itself, so only the other screen is left. So a shortcut is one line:
 
 ```bat
 @echo off
@@ -114,7 +128,7 @@ cd /d "%~dp0"
 INWAY.exe -c 2.253 938572
 ```
 
-Don't put `pause` at the end, or the black window stays open.
+Don't put `pause` at the end, or the black window stays open. When the `.bat` goes on after INWAY, the black window comes back by itself when the session ends.
 
 ## Servers: always on
 
@@ -124,18 +138,29 @@ On a PC that stays on all the time, run this **once**:
 INWAY.exe -install -p 938572
 ```
 
-Windows asks for permission: click **Yes**. INWAY copies itself to `C:\Program Files\INWAY`, installs a Windows service called **INWAY**, and opens the firewall for the local network only. On an account without admin rights, the admin part runs hidden and the result shows in the normal window, so a remote session never gets stuck behind an admin window. From now on that PC is shared all the time:
+Windows asks for admin rights, and **the answer decides what kind of server it becomes**:
+
+| Answer  | Server                                                                                         |
+| ------- | ---------------------------------------------------------------------------------------------- |
+| **Yes** | **The full server.** A Windows service, works on the lock screen too (see the list below)      |
+| **No**  | **The normal-rights server.** Starts with no window when you sign in, works until you sign out |
+
+With **Yes**, INWAY copies itself to `C:\Program Files\INWAY`, installs a Windows service called **INWAY**, and opens the firewall for the local network only. The admin part runs hidden and the result shows in the normal window, so a remote session never gets stuck behind an admin window. From now on that PC is shared all the time:
 
 * on the lock screen and the login screen, also right after a restart,
 * in Task Manager and other admin windows,
 * in "Do you want to allow this app?" popups,
 * and **`CTRL` + `ALT` + `DEL`** works from the menu.
 
+With **No**, INWAY copies itself to `%LOCALAPPDATA%\INWAY` and starts from your account's sign-in list, with no window. It can't use admin windows or the lock screen, and the first time Windows asks about the firewall like for any program. To make it the full server later, run the same `-install` again and click **Yes**: the full server replaces it.
+
 A server only lets people in with its code: nobody sits there to click Accept. After 5 wrong codes in a row it waits 30 seconds before it takes the next one.
 
-To change the code, run `-install` again with the new one. To take it out: `INWAY.exe -uninstall`.
+To change the code, run `-install` again with the new one. To take it out: `INWAY.exe -uninstall`. It only asks for admin rights when the full server is installed.
 
 **Servers update themselves.** The service asks GitHub for a new release every 6 hours. The first check comes 3 to 15 minutes after it starts, and the times are spread a little, so many servers behind one internet connection don't all ask at once. A new `INWAY.exe` is downloaded and checked against GitHub's SHA-256, then it **waits until nobody is connected**: it never drops a session. Then it stops the service, takes the place of the old EXE and starts the service again. The code, the port and the firewall rule stay the same. What happens is written to `C:\Program Files\INWAY\INWAY.log`.
+
+**A server also looks just before it lets someone in** (at most once in 10 minutes, GitHub allows 60 looks an hour). When a new INWAY is out, it answers "updating", updates itself, and the other PC connects again by itself a few seconds later. The normal-rights server does all of this too.
 
 To keep a server on manual updates, install it like this:
 
@@ -143,9 +168,9 @@ To keep a server on manual updates, install it like this:
 INWAY.exe -install -p 938572 -noupdate
 ```
 
-> **Installing from far away:** over a normal INWAY session, the Windows **Yes** prompt can't be clicked remotely: someone at that PC has to click it. Over the background service (or the old CONNECT service) you can click it yourself. That's why moving PCs over works through CONNECT.
+> **Installing from far away:** over a normal INWAY session, the Windows **Yes** prompt can't be clicked remotely: someone at that PC has to click it (or click **No** for the normal-rights server). Over the background service (or the old CONNECT service) you can click it yourself. That's why moving PCs over works through CONNECT.
 
-> **Why a service?** Windows only lets programs with system rights see the lock screen and admin windows, and only a service may press `CTRL` + `ALT` + `DEL`. INWAY already runs as administrator when it can, which covers Task Manager and other admin windows, but not the lock screen.
+> **Why a service?** Windows only lets programs with system rights see the lock screen and admin windows, and only a service may press `CTRL` + `ALT` + `DEL`. A normal INWAY gets admin rights for one session when someone clicks **Yes**, which covers Task Manager and other admin windows, but not the lock screen.
 
 ## Moving PCs from CONNECT to INWAY
 
@@ -176,7 +201,7 @@ When an update is due:
 
 No network or a GitHub rate limit: INWAY just starts as it is. `-noupdate` skips the check.
 
-The copy in `C:\Program Files\INWAY` belongs to the background service, and the service updates it by itself (see [Servers: always on](#servers-always-on)).
+The copy in `C:\Program Files\INWAY` belongs to the background service, and the service updates it by itself. The normal-rights server in `%LOCALAPPDATA%\INWAY` updates itself the same way, every 6 hours (see [Servers: always on](#servers-always-on)).
 
 ## Making a release
 
@@ -212,7 +237,7 @@ gcc -std=c99 -O2 -Isrc src\*.c inway.res.o -o INWAY.exe -static -s -lws2_32 -lgd
 | File                                 | What it is                                                               |
 | ------------------------------------ | ------------------------------------------------------------------------ |
 | [`src/main.c`](src/main.c)           | Command line, main screen, `-c`, `-install`                              |
-| [`src/inway.h`](src/inway.h)         | The one header: port, protocol, all modules                              |
+| [`src/inway.h`](src/inway.h)         | First include of every file: Windows version, port, protocol             |
 | [`src/version.h`](src/version.h)     | The version, used by the code and the resources                          |
 | [`src/host.c`](src/host.c)           | Sharing side: screen, mouse, keyboard, code check                        |
 | [`src/viewer.c`](src/viewer.c)       | Controlling side: the remote window, Windows key, `CTRL` + `ALT` + `DEL` |
@@ -256,7 +281,16 @@ Every sentence is in [`src/lang.c`](src/lang.c), one table per language. To add 
 * **The connection is not encrypted.** Someone who can watch the traffic on your network can see the screen and the keys, also a password typed on the lock screen. Use it at home or in your office, not on a public network.
 * **Who gets in:** only someone with the code, or someone you click **Accept** for. A wrong code costs 2 seconds, 5 in a row cost 30 seconds.
 * **The firewall rule** made by `-install` only accepts PCs from the local network.
-* **A server's code** is stored in its service settings, so an admin of that PC can read it.
+* **A server's code** is stored in its service settings, so an admin of that PC can read it. The normal-rights server keeps it in the sign-in list of that account.
+* **Admin rights stay inside the controlled PC.** The hidden admin copy only talks to INWAY on the same PC (`127.0.0.1`), and only after it sends a one-time secret.
+
+---
+
+# Legal
+
+> **Use INWAY only on PCs you own, or where the owner and the person at that PC agreed.**
+
+Whoever runs INWAY decides which PC it connects to, and is responsible for that. INWAY comes without any warranty (GPL-3.0, sections 15 and 16), and changed copies are not mine. The whole text, also in Turkish, is in **[DISCLAIMER.md](DISCLAIMER.md)**.
 
 ---
 

@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - MAIN                                       #       Maximum Tension       #
+# C - main                                       #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,70 +8,224 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                  INWAY                                   |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| INWAY: A SMALL REMOTE DESKTOP FOR WINDOWS PCS ON THE SAME LOCAL NETWORK. |*|
-|*| ONE EXE IS BOTH SIDES. OPENED NORMALLY IT SHARES THIS PC (ADDRESS AND    |*|
-|*| CODE ON THE SCREEN) AND ASKS RIGHT AWAY FOR THE ADDRESS OF ANOTHER PC TO |*|
-|*| CONTROL. -C CONNECTS ONCE AND EXITS WHEN THAT SESSION ENDS.              |*|
-|*| THIS FILE READS THE COMMAND LINE, PICKS THE MODE AND DRAWS THE MAIN      |*|
-|*| SCREEN. EVERYTHING ELSE LIVES IN THE MODULES LISTED IN INWAY.H.          |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :   v [C LANGUAGE]                                                       : *|
-|* :  1|                                                                    : *|
-|* :  2| INWAY.exe                        share + connect                   : *|
-|* :  3| INWAY.exe -p 938572              fixed code for this PC            : *|
-|* :  4| INWAY.exe -c 2.253 948248        connect once with a code          : *|
-|* :  5| INWAY.exe -c 2.253               connect once, they click Accept   : *|
-|* :  6| INWAY.exe -install -p 938572     always on,                        : *|
-|* :  7|     also on the lock screen                                        : *|
-|* :  8| INWAY.exe -install -p 938572 -noupdate   same,                     : *|
-|* :  9|     never updates itself                                           : *|
-|* : 10| INWAY.exe -uninstall             remove that again                 : *|
-|* : 11| INWAY.exe -removeold             remove the old CONNECT tool       : *|
-|* : 12| INWAY.exe -lang tr               language: en or tr                : *|
-|* : 13| INWAY.exe -noupdate              do not look for a new version     : *|
-|* : 14|                                                                    : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# INWAY: A SMALL REMOTE DESKTOP FOR WINDOWS PCS ON THE SAME LOCAL NETWORK. ONE
+# EXE IS BOTH SIDES. OPENED NORMALLY IT SHARES THIS PC (ADDRESS AND CODE ON THE
+# SCREEN) AND ASKS RIGHT AWAY FOR THE ADDRESS OF ANOTHER PC TO CONTROL. -C
+# CONNECTS ONCE AND EXITS WHEN THAT SESSION ENDS.
+# THIS FILE READS THE COMMAND LINE, PICKS THE MODE AND DRAWS THE MAIN SCREEN.
+# EVERYTHING ELSE LIVES IN THE MODULES INCLUDED BELOW.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * ALL INWAY MODULES
+ * #define _WIN32_WINNT
+ * #define WIN32_LEAN_AND_MEAN
+ * enum E_RESULT;
+ */
+#include <winsock2.h>
+/******* """"""""""""
+ * #define INVALID_SOCKET
+ * typedef	WSADATA;
+ * int		WSACleanup(void);
+ * int		WSAStartup(WORD, LPWSADATA);
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define CREATE_NO_WINDOW
+ * #define FALSE
+ * #define MAKEWORD(a, b)
+ * #define SW_SHOW
+ * #define WINAPI
+ * typedef	BOOL;
+ * typedef	DWORD;
+ * typedef	HANDLE;
+ * typedef	HMODULE;
+ * typedef	PROCESS_INFORMATION;
+ * typedef	PUCHAR;
+ * typedef	STARTUPINFOW;
+ * typedef	WCHAR;
+ * BOOL		CloseHandle(HANDLE);
+ * BOOL		CreateProcessW(
+ * 	LPCWSTR,
+ * 	LPWSTR,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	BOOL,
+ * 	DWORD,
+ * 	LPVOID,
+ * 	LPCWSTR,
+ * 	LPSTARTUPINFOW,
+ * 	LPPROCESS_INFORMATION
+ * );
+ * void		EnterCriticalSection(LPCRITICAL_SECTION);
+ * LPWSTR	GetCommandLineW(void);
+ * DWORD	GetConsoleProcessList(LPDWORD, DWORD);
+ * HWND		GetConsoleWindow(void);
+ * DWORD	GetCurrentProcessId(void);
+ * HMODULE	GetModuleHandleW(LPCWSTR);
+ * FARPROC	GetProcAddress(HMODULE, LPCSTR);
+ * DWORD	GetTickCount(void);
+ * void		LeaveCriticalSection(LPCRITICAL_SECTION);
+ * int		lstrlenW(LPCWSTR);
+ * BOOL		SetProcessDPIAware(void);
+ * BOOL		ShowWindow(HWND, int);
  */
 #include <bcrypt.h>
 /******* """"""""""
- * BCryptGenRandom()
+ * #define BCRYPT_USE_SYSTEM_PREFERRED_RNG
+ * NTSTATUS	BCryptGenRandom(BCRYPT_ALG_HANDLE, PUCHAR, ULONG, ULONG);
+ */
+#include <stdio.h>
+/******* """""""""
+ * int	snprintf(char *, size_t, const char *, ...);
+ * int	swprintf(wchar_t *, size_t, const wchar_t *, ...);
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * int	atoi(const char *);
+ * void	free(void *);
+ * void	*malloc(size_t);
+ * int	rand(void);
+ * void	srand(unsigned int);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * int		_stricmp(const char *, const char *);
+ * void		*memset(void *, int, size_t);
+ * char		*strcat(char *, const char *);
+ * size_t	strlen(const char *);
+ * size_t	strspn(const char *, const char *);
+ */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	uint32_t;
+ */
+#include <time.h>
+/******* """"""""
+ * time_t	time(time_t *);
+ */
+#include "version.h"
+/******* """""""""""
+ * #define INWAY_VERSION_TEXT
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void	TEXT_ADD(struct S_TEXT *, const char *);
+ * void	TEXT_ADDF(struct S_TEXT *, const char *, ...);
+ * void	TEXT_FREE(struct S_TEXT *);
+ */
+#include "lang.h"
+/******* """"""""
+ * enum E_STR;
+ * const char	*LANG(enum E_STR);
+ * void			LANG_INIT(const char *);
+ */
+#include "console.h"
+/******* """""""""""
+ * #define BOX_INNER
+ * CRITICAL_SECTION	G_CONSOLE_LOCK;
+ * char				G_HOST_STATUS[64];
+ * void				ASK(const char *, char *, size_t);
+ * void				BOX(
+ * 	struct S_TEXT *,
+ * 	const char *,
+ * 	const char * const *,
+ * 	int,
+ * 	const char *,
+ * 	int
+ * );
+ * const char		*CLEAR_SCREEN(void);
+ * void				CONSOLE_INIT(void);
+ * void				CONSOLE_SETUP(void);
+ * void				SAY(const char *);
+ * void				SAYF(const char *, ...);
+ * const char		*SYM(const char *, const char *);
+ * int				VISIBLE_LENGTH(const char *);
+ */
+#include "net.h"
+/******* """""""
+ * uint32_t	G_MY_IP;
+ * void		CODE_TEXT(int, char *, size_t);
+ * void		IP_SHORT(uint32_t, char *, size_t);
+ * int		PARSE_ADDRESS(const char *, uint32_t *);
+ * uint32_t	PICK_LOCAL_IP(void);
+ */
+#include "host.h"
+/******* """"""""
+ * int		G_CODE;
+ * SOCKET	G_LISTEN;
+ * void		HOST_START(void);
+ * int		HOST_TAKE_OVER(const char *);
+ */
+#include "viewer.h"
+/******* """"""""""
+ * int				G_HIDE_CONSOLE;
+ * volatile LONG	G_QUIT;
+ * enum E_RESULT	VIEWER_CONNECT(uint32_t, int32_t, const char *);
+ * void				VIEWER_INIT(void);
+ */
+#include "service.h"
+/******* """""""""""
+ * #define SVC_COPY_FAILED
+ * #define SVC_CREATE_FAILED
+ * #define SVC_DECLINED
+ * #define SVC_DONE
+ * #define SVC_DONE_USER
+ * #define SVC_NO_PERMISSION
+ * #define SVC_NO_SCM
+ * #define SVC_NOT_STARTED
+ * char	G_SVC_CODE[8];
+ * int	G_SVC_RUNNING;
+ * int	SERVICE_EXISTS(void);
+ * int	SERVICE_INSTALL(const char *, int);
+ * int	SERVICE_INSTALL_USER(const char *, int);
+ * int	SERVICE_IS_ADMIN(void);
+ * void	SERVICE_READ_INFO(void);
+ * int	SERVICE_RELAUNCH_AS_ADMIN(const char *);
+ * int	SERVICE_REMOVE_OLD(void);
+ * int	SERVICE_RUN(const char *, int);
+ * int	SERVICE_RUN_USER(const char *, int);
+ * int	SERVICE_SWAP(void);
+ * int	SERVICE_UNINSTALL(void);
+ * int	SERVICE_UNINSTALL_USER(void);
+ * int	SERVICE_WORKER(void);
+ */
+#include "update.h"
+/******* """"""""""
+ * void	UPDATE_CHECK(void);
+ * void	UPDATE_FINISH(void);
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
 struct	S_OPTIONS
 {
-	char	ADDRESS[64];	/* -C */
-	char	CONNECT_CODE[8];	/* -C ADDRESS [CODE] */
-	char	CODE[8];		/* -P */
-	char	LANGUAGE[8];	/* -LANG */
-	int	CONNECT;
-	int	INSTALL;
-	int	UNINSTALL;
-	int	REMOVE_OLD;
-	int	SERVICE;
-	int	WORKER;
-	int	NO_UPDATE;
-	int	UPDATE_FINISH;
-	int	QUIET;		/* THE HIDDEN ADMIN COPY: NO QUESTIONS */
-	int	SERVICE_SWAP;	/* A SERVER UPDATING ITSELF */
-	int	HELP;
+	char	ADDRESS[64]; /* -C */
+	char	CONNECT_CODE[8]; /* -C ADDRESS [CODE] */
+	char	CODE[8]; /* -P */
+	char	LANGUAGE[8]; /* -LANG */
+	char	SERVE[48]; /* -SERVE PIPE: THE ADMIN COPY OF ONE SESSION */
+	int		CONNECT;
+	int		INSTALL;
+	int		UNINSTALL;
+	int		REMOVE_OLD;
+	int		SERVICE;
+	int		WORKER;
+	int		NO_UPDATE;
+	int		UPDATE_FINISH;
+	int		QUIET; /* THE HIDDEN ADMIN COPY: NO QUESTIONS */
+	int		SERVICE_SWAP; /* A SERVER UPDATING ITSELF */
+	int		BACKGROUND; /* THE NORMAL-RIGHTS SERVER */
+	int		HIDDEN; /* ALREADY STARTED AGAIN WITHOUT A WINDOW */
+	int		HELP;
 };
 
 /* .,,,,. #==========================================================# .,,,,. */
@@ -81,7 +235,7 @@ static void
 	DPI_AWARE(void)
 {
 	typedef BOOL	(WINAPI *T_SET_CONTEXT)(HANDLE CONTEXT);
-	HMODULE		USER;
+	HMODULE			USER;
 	T_SET_CONTEXT	SET;
 
 	USER = GetModuleHandleW(L"user32.dll");
@@ -112,6 +266,37 @@ static int
 		R = ((uint32_t)rand() << 15) | (uint32_t)rand();
 	}
 	return ((int)(R % 900000) + 100000);
+}
+
+/*
+# THE NORMAL-RIGHTS SERVER STARTS FROM THE "RUN" KEY, AND WINDOWS GIVES IT A
+# TEXT WINDOW. IT STARTS ITSELF AGAIN WITHOUT ONE AND THIS COPY ENDS.
+*/
+static int
+	RESTART_HIDDEN(void)
+{
+	STARTUPINFOW		SI;
+	PROCESS_INFORMATION	PI;
+	WCHAR				*COMMAND;
+	size_t				CHARS;
+
+	CHARS = (size_t)lstrlenW(GetCommandLineW()) + 16;
+	COMMAND = (WCHAR *)malloc(CHARS * sizeof(WCHAR));
+	if (!COMMAND)
+	{
+		return (1);
+	}
+	swprintf(COMMAND, CHARS, L"%ls -hidden", GetCommandLineW());
+	memset(&SI, 0, sizeof(SI));
+	SI.cb = sizeof(SI);
+	if (CreateProcessW(NULL, COMMAND, NULL, NULL, FALSE, CREATE_NO_WINDOW,
+		NULL, NULL, &SI, &PI))
+	{
+		CloseHandle(PI.hThread);
+		CloseHandle(PI.hProcess);
+	}
+	free(COMMAND);
+	return (0);
 }
 
 /* READS "948248" OR "948 248" (TWO WORDS) AFTER ARGV[*I] */
@@ -220,6 +405,18 @@ static void
 		{
 			O->QUIET = 1;
 		}
+		else if (IS_OPTION(ARGV[I], "serve") && I + 1 < ARGC)
+		{
+			snprintf(O->SERVE, sizeof(O->SERVE), "%s", ARGV[++I]);
+		}
+		else if (IS_OPTION(ARGV[I], "background"))
+		{
+			O->BACKGROUND = 1;
+		}
+		else if (IS_OPTION(ARGV[I], "hidden"))
+		{
+			O->HIDDEN = 1;
+		}
 		else if (IS_OPTION(ARGV[I], "update-finish"))
 		{
 			O->UPDATE_FINISH = 1;
@@ -248,8 +445,8 @@ static void
 	TITLE_BOX(struct S_TEXT *OUTPUT, const char *TITLE)
 {
 	struct S_TEXT	LINE = {0};
-	const char	*LINES[1];
-	int		PAD;
+	const char		*LINES[1];
+	int				PAD;
 
 	PAD = (BOX_INNER - 4 - VISIBLE_LENGTH(TITLE)) / 2;
 	while (PAD-- > 0)
@@ -267,12 +464,12 @@ static void
 {
 	struct S_TEXT	OUTPUT = {0};
 	struct S_TEXT	L[8];
-	const char	*LINES[8];
-	char		ADDRESS[24];
-	char		CODE[16];
-	char		STATUS[64];
-	int		COUNT;
-	int		I;
+	const char		*LINES[8];
+	char			ADDRESS[24];
+	char			CODE[16];
+	char			STATUS[64];
+	int				COUNT;
+	int				I;
 
 	memset(L, 0, sizeof(L));
 	EnterCriticalSection(&G_CONSOLE_LOCK);
@@ -308,8 +505,8 @@ static void
 			(G_SVC_RUNNING && strlen(G_SVC_CODE) != 6) ?
 			LANG(STR_SVC_CODE_UNKNOWN) : CODE);
 		TEXT_ADD(&L[COUNT++], "");
-		TEXT_ADDF(&L[COUNT++], "{d}%s{0}",
-			LANG(G_SVC_RUNNING ? STR_SVC_HINT : STR_SHARE_HINT));
+		TEXT_ADDF(&L[COUNT++], "{d}%s{0}", LANG(G_SVC_RUNNING == 2 ?
+			STR_SVC_USER_HINT : G_SVC_RUNNING ? STR_SVC_HINT : STR_SHARE_HINT));
 		if (STATUS[0])
 		{
 			TEXT_ADDF(&L[COUNT], "{y}%s ", SYM("●", "*"));
@@ -356,8 +553,8 @@ static void
 	)
 {
 	struct S_TEXT	FIRST = {0};
-	const char	*LINES[6];
-	int		I;
+	const char		*LINES[6];
+	int				I;
 
 	TEXT_ADDF(&FIRST, LANG(TEXT), LABEL);
 	LINES[0] = FIRST.DATA;
@@ -424,6 +621,16 @@ static void
 		case (CR_BUSY):
 			SHOW_RESULT_BOX(OUTPUT, STR_R_BUSY_T, STR_R_BUSY, LABEL, NULL, 0);
 			return ;
+		case (CR_UPDATING):
+			SHOW_RESULT_BOX(
+				OUTPUT,
+				STR_R_UPDATING_T,
+				STR_R_UPDATING,
+				LABEL,
+				NULL,
+				0
+			);
+			return ;
 		case (CR_NO_PC):
 			CHECKS[0] = LANG(STR_R_NO_PC_1);
 			CHECKS[1] = LANG(STR_R_NO_PC_2);
@@ -457,7 +664,7 @@ static void
 static void
 	PRESS_ENTER(enum E_STR ID)
 {
-	char	LINE[16];
+	char			LINE[16];
 	struct S_TEXT	T = {0};
 
 	TEXT_ADDF(&T, "  {d}%s{0}", LANG(ID));
@@ -476,14 +683,15 @@ static void
 	SHOW_ADMIN_RESULT(const struct S_OPTIONS *O, int RESULT, int TELL_WHY)
 {
 	struct S_TEXT	OUTPUT = {0};
-	struct S_TEXT	L[5];
-	const char	*LINES[5];
-	char		ADDRESS[24];
-	char		CODE[16];
-	int		I;
+	struct S_TEXT	L[6];
+	const char		*LINES[6];
+	char			ADDRESS[24];
+	char			CODE[16];
+	int				COUNT;
+	int				I;
 
 	memset(L, 0, sizeof(L));
-	if (RESULT != SVC_DONE)
+	if (RESULT != SVC_DONE && RESULT != SVC_DONE_USER)
 	{
 		if (!TELL_WHY)
 		{
@@ -516,21 +724,27 @@ static void
 		G_MY_IP = PICK_LOCAL_IP();
 		IP_SHORT(G_MY_IP, ADDRESS, sizeof(ADDRESS));
 		CODE_TEXT(atoi(O->CODE), CODE, sizeof(CODE));
-		TEXT_ADD(&L[0], LANG(STR_I_DONE));
+		COUNT = 0;
+		TEXT_ADD(&L[COUNT++], LANG(RESULT == SVC_DONE_USER ? STR_I_USER_DONE :
+			STR_I_DONE));
 		TEXT_ADDF(
-			&L[1],
+			&L[COUNT++],
 			"%-9s {y}%s{0}",
 			LANG(STR_ADDRESS),
 			G_MY_IP ? ADDRESS : "?"
 		);
-		TEXT_ADDF(&L[2], "%-9s {y}%s{0}", LANG(STR_CODE), CODE);
-		TEXT_ADDF(&L[3], "{d}%s{0}", LANG(STR_I_TAKEOVER));
-		TEXT_ADDF(&L[4], "{d}%s{0}", LANG(STR_I_REMOVE_HINT));
-		for (I = 0; I < 5; ++I)
+		TEXT_ADDF(&L[COUNT++], "%-9s {y}%s{0}", LANG(STR_CODE), CODE);
+		TEXT_ADDF(&L[COUNT++], "{d}%s{0}", LANG(STR_I_TAKEOVER));
+		if (RESULT == SVC_DONE_USER)
+		{
+			TEXT_ADDF(&L[COUNT++], "{d}%s{0}", LANG(STR_I_USER_UPGRADE));
+		}
+		TEXT_ADDF(&L[COUNT++], "{d}%s{0}", LANG(STR_I_REMOVE_HINT));
+		for (I = 0; I < COUNT; ++I)
 		{
 			LINES[I] = L[I].DATA;
 		}
-		BOX(&OUTPUT, LANG(STR_I_DONE_T), LINES, 5, "{G}", 0);
+		BOX(&OUTPUT, LANG(STR_I_DONE_T), LINES, COUNT, "{G}", 0);
 	}
 	else
 	{
@@ -539,7 +753,7 @@ static void
 	}
 	SAY("\n");
 	SAY(OUTPUT.DATA);
-	for (I = 0; I < 5; ++I)
+	for (I = 0; I < 6; ++I)
 	{
 		TEXT_FREE(&L[I]);
 	}
@@ -565,14 +779,18 @@ static int
 # WITHOUT ADMIN RIGHTS, A HIDDEN ADMIN COPY ("-QUIET") DOES THE WORK AND THIS
 # NORMAL WINDOW SHOWS THE RESULT. A VISIBLE ADMIN WINDOW WOULD FREEZE A REMOTE
 # SESSION: WINDOWS DOES NOT LET A NORMAL PROGRAM CLICK OR TYPE INTO IT.
+# - -INSTALL AND "NO" ON THE ADMIN QUESTION: THE NORMAL-RIGHTS SERVER.
+# - -UNINSTALL REMOVES THE NORMAL-RIGHTS SERVER WITHOUT ASKING, AND ONLY ASKS
+#   FOR ADMIN RIGHTS WHEN THE FULL SERVER IS THERE TOO.
 */
 static int
 	ADMIN_JOB(const struct S_OPTIONS *O, const char *ERRORS)
 {
 	struct S_TEXT	OUTPUT = {0};
-	char		PARAMETERS[64];
-	char		EXTRA[16];
-	int		RESULT;
+	char			PARAMETERS[64];
+	char			EXTRA[16];
+	int				RESULT;
+	int				REMOVED_USER;
 
 	if (O->QUIET)
 	{
@@ -590,14 +808,25 @@ static int
 	TEXT_ADD(&OUTPUT, "\n");
 	SAY(OUTPUT.DATA);
 	TEXT_FREE(&OUTPUT);
-	if (SERVICE_IS_ADMIN())
+	REMOVED_USER = O->UNINSTALL ? SERVICE_UNINSTALL_USER() : 0;
+	if (O->UNINSTALL && !SERVICE_EXISTS())
+	{
+		if (!REMOVED_USER)
+		{
+			SAYF("  {d}%s{0}\n", LANG(STR_I_NOT_INSTALLED));
+		}
+		RESULT = SVC_DONE; /* NO FULL SERVER: NO ADMIN QUESTION */
+		SHOW_ADMIN_RESULT(O, RESULT, 0);
+	}
+	else if (SERVICE_IS_ADMIN())
 	{
 		RESULT = RUN_ADMIN_JOB(O);
 		SHOW_ADMIN_RESULT(O, RESULT, 0);
 	}
 	else
 	{
-		SAYF("  {y}%s{0}\n", LANG(STR_I_PERMISSION));
+		SAYF("  {y}%s{0}\n", LANG(O->INSTALL ? STR_I_PERMISSION_INSTALL :
+			STR_I_PERMISSION));
 		if (O->INSTALL)
 		{
 			snprintf(
@@ -619,10 +848,18 @@ static int
 			strcat(PARAMETERS, EXTRA);
 		}
 		RESULT = SERVICE_RELAUNCH_AS_ADMIN(PARAMETERS);
-		SHOW_ADMIN_RESULT(O, RESULT, 1);
+		if (O->INSTALL && RESULT == SVC_DECLINED && !SERVICE_EXISTS())
+		{
+			RESULT = SERVICE_INSTALL_USER(O->CODE, O->NO_UPDATE);
+			SHOW_ADMIN_RESULT(O, RESULT, 0);
+		}
+		else
+		{
+			SHOW_ADMIN_RESULT(O, RESULT, 1);
+		}
 	}
 	PRESS_ENTER(STR_PRESS_ENTER_CLOSE);
-	return (RESULT == SVC_DONE ? 0 : 1);
+	return (RESULT == SVC_DONE || RESULT == SVC_DONE_USER ? 0 : 1);
 }
 
 /* -C: CONNECT ONCE. WHEN THAT SESSION ENDS, INWAY ENDS. */
@@ -631,8 +868,9 @@ static int
 {
 	struct S_TEXT	OUTPUT = {0};
 	enum E_RESULT	R;
-	uint32_t	IP;
-	char		LABEL[24];
+	uint32_t		IP;
+	DWORD			PIDS[4];
+	char			LABEL[24];
 
 	if (PARSE_ADDRESS(O->ADDRESS, &IP) != 0)
 	{
@@ -644,11 +882,20 @@ static int
 	SAY("\n  {c}");
 	SAYF(LANG(O->CONNECT_CODE[0] ? STR_CONNECTING : STR_WAITING), LABEL);
 	SAY("{0}\n");
+	G_HIDE_CONSOLE = 1;
 	R = VIEWER_CONNECT(
 		IP,
 		O->CONNECT_CODE[0] ? atoi(O->CONNECT_CODE) : 0,
 		LABEL
 	);
+	/*
+	# THE TEXT WINDOW WAS HIDDEN DURING THE SESSION. WHEN IT BELONGS TO A .BAT
+	# OR ANOTHER PROGRAM TOO, SHOW IT AGAIN: THAT ONE GOES ON AFTER US.
+	*/
+	if (GetConsoleWindow() && GetConsoleProcessList(PIDS, 4) > 1)
+	{
+		ShowWindow(GetConsoleWindow(), SW_SHOW);
+	}
 	if (R == CR_ENDED)
 	{
 		return (0);
@@ -668,14 +915,14 @@ static int
 	struct S_TEXT	NOTICE = {0};
 	struct S_TEXT	Q = {0};
 	enum E_RESULT	R;
-	uint32_t	IP;
-	char		INPUT[128];
-	char		DIGITS[8];
-	char		LABEL[24];
-	const char	*ARROW;
-	size_t		K;
-	size_t		N;
-	int		TYPED;
+	uint32_t		IP;
+	char			INPUT[128];
+	char			DIGITS[8];
+	char			LABEL[24];
+	const char		*ARROW;
+	size_t			K;
+	size_t			N;
+	int				TYPED;
 
 	TEXT_ADD(&NOTICE, ERRORS);
 	ARROW = SYM("►", ">");
@@ -773,9 +1020,9 @@ int
 	main(int ARGC, char **ARGV)
 {
 	struct S_OPTIONS	O;
-	struct S_TEXT	ERRORS = {0};
-	WSADATA		WD;
-	int		RESULT;
+	struct S_TEXT		ERRORS = {0};
+	WSADATA				WD;
+	int					RESULT;
 
 	DPI_AWARE();
 	CONSOLE_INIT();
@@ -809,6 +1056,26 @@ int
 		G_CODE = atoi(O.CODE);
 		G_MY_IP = PICK_LOCAL_IP();
 		return (SERVICE_WORKER());
+	}
+	if (O.SERVE[0])
+	{
+		return (HOST_TAKE_OVER(O.SERVE)); /* THE ADMIN COPY OF ONE SESSION */
+	}
+	if (O.BACKGROUND)
+	{
+		if (!O.CODE[0])
+		{
+			return (1);
+		}
+		if (!O.HIDDEN && GetConsoleWindow())
+		{
+			return (RESTART_HIDDEN()); /* STARTED WITH A WINDOW AT SIGN-IN */
+		}
+		if (O.UPDATE_FINISH)
+		{
+			UPDATE_FINISH();
+		}
+		return (SERVICE_RUN_USER(O.CODE, O.NO_UPDATE));
 	}
 	CONSOLE_SETUP();
 	if (O.INSTALL || O.UNINSTALL || O.REMOVE_OLD)

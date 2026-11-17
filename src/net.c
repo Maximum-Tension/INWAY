@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - NET                                        #       Maximum Tension       #
+# C - net                                        #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,42 +8,93 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                   NET                                    |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| SOCKET HELPERS, ADDRESSES AND CODES. SEE NET.H.                          |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| int PARSE_ADDRESS(const char *INPUT, uint32_t *OUT);                : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# SOCKET HELPERS, ADDRESSES AND CODES. SEE NET.H.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * SOCKET, getaddrinfo()
+ * #define _WIN32_WINNT
+ * #define WIN32_LEAN_AND_MEAN
+ * struct S_MSG_HDR;
+ */
+#include <winsock2.h>
+/******* """"""""""""
+ * #define AF_INET
+ * #define INVALID_SOCKET
+ * #define IPPROTO_UDP
+ * #define SOCK_DGRAM
+ * typedef			SOCKET;
+ * struct sockaddr;
+ * struct sockaddr_in;
+ * int				closesocket(SOCKET);
+ * int				connect(SOCKET, const struct sockaddr *, int);
+ * int				gethostname(char *, int);
+ * int				getsockname(SOCKET, struct sockaddr *, int *);
+ * u_short			htons(u_short);
+ * unsigned long	inet_addr(const char *);
+ * u_long			ntohl(u_long);
+ * int				recv(SOCKET, char *, int, int);
+ * int				send(SOCKET, const char *, int, int);
+ * SOCKET			socket(int, int, int);
+ */
+#include <ws2tcpip.h>
+/******* """"""""""""
+ * struct addrinfo;
+ * void	freeaddrinfo(LPADDRINFO);
+ * int	getaddrinfo(
+ * 	const char *,
+ * 	const char *,
+ * 	const struct addrinfo *,
+ * 	struct addrinfo **
+ * );
+ */
+#include <windows.h>
+/******* """""""""""
+ * void	DeleteCriticalSection(LPCRITICAL_SECTION);
+ * void	EnterCriticalSection(LPCRITICAL_SECTION);
+ * void	InitializeCriticalSection(LPCRITICAL_SECTION);
+ * void	LeaveCriticalSection(LPCRITICAL_SECTION);
+ */
+#include <stdio.h>
+/******* """""""""
+ * int	snprintf(char *, size_t, const char *, ...);
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * void	*realloc(void *, size_t);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * void		*memset(void *, int, size_t);
+ */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	uint32_t;
+ * typedef	uint8_t;
+ */
+#include "net.h"
+/******* """""""
+ * struct S_LINK;
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
 uint32_t	G_MY_IP = 0;
 
-#define HOME_NET	0XC0A80000U	/* 192.168.0.0 */
+#define HOME_NET 0XC0A80000U /* 192.168.0.0 */
 
 int
 	SEND_ALL(SOCKET S, const void *BUFFER, int SIZE)
 {
 	const char	*P;
-	int		DONE;
+	int			DONE;
 
 	P = (const char *)BUFFER;
 	while (SIZE > 0)
@@ -63,7 +114,7 @@ int
 	RECV_ALL(SOCKET S, void *BUFFER, int SIZE)
 {
 	char	*P;
-	int	DONE;
+	int		DONE;
 
 	P = (char *)BUFFER;
 	while (SIZE > 0)
@@ -110,19 +161,19 @@ static int
 uint32_t
 	PICK_LOCAL_IP(void)
 {
-	SOCKET		U;
+	SOCKET				U;
 	struct sockaddr_in	TARGET;
 	struct sockaddr_in	ME;
-	int			SIZE;
-	uint32_t		ROUTED;
-	uint32_t		BEST;
-	uint32_t		IP;
-	int			BEST_SCORE;
-	int			SCORE;
-	char			NAME[256];
-	struct addrinfo	HINTS;
-	struct addrinfo	*LIST;
-	struct addrinfo	*P;
+	int					SIZE;
+	uint32_t			ROUTED;
+	uint32_t			BEST;
+	uint32_t			IP;
+	int					BEST_SCORE;
+	int					SCORE;
+	char				NAME[256];
+	struct addrinfo		HINTS;
+	struct addrinfo		*LIST;
+	struct addrinfo		*P;
 
 	ROUTED = 0;
 	U = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -230,7 +281,7 @@ int
 	uint32_t	VALUE;
 	uint32_t	BASE;
 	uint32_t	IP;
-	int		DIGITS;
+	int			DIGITS;
 
 	LEN = 0;
 	for (P = INPUT; *P && LEN + 1 < sizeof(CLEAN); ++P)
@@ -326,7 +377,7 @@ int
 	)
 {
 	struct S_MSG_HDR	HDR;
-	int			OK;
+	int					OK;
 
 	HDR.TYPE = TYPE;
 	HDR.BYTES = LA + LB;
@@ -359,7 +410,7 @@ int
 	)
 {
 	struct S_MSG_HDR	HDR;
-	uint8_t			*BIGGER;
+	uint8_t				*BIGGER;
 
 	if (!RECV_ALL(S, &HDR, sizeof(HDR)) || HDR.BYTES > MAX)
 	{

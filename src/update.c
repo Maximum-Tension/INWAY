@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - UPDATE                                     #       Maximum Tension       #
+# C - update                                     #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,47 +8,293 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                  UPDATE                                  |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| GITHUB RELEASE CHECK, DOWNLOAD, SHA-256 CHECK AND THE EXE SWAP. SEE      |*|
-|*| UPDATE.H FOR THE STEPS.                                                  |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| void UPDATE_CHECK(void);                                            : *|
-|* : 3|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# GITHUB RELEASE CHECK, DOWNLOAD, SHA-256 CHECK AND THE EXE SWAP. SEE UPDATE.H
+# FOR THE STEPS.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * INWAY_VERSION_A, SAYF(), struct S_TEXT
+ * #define _WIN32_WINNT
+ * #define INWAY_PORT
+ * #define WIN32_LEAN_AND_MEAN
+ */
+#include <winsock2.h>
+/******* """"""""""""
+ * #define AF_INET
+ * typedef	u_short;
+ * u_short	ntohs(u_short);
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define CREATE_ALWAYS
+ * #define CREATE_NEW
+ * #define CREATE_NO_WINDOW
+ * #define CREATE_SUSPENDED
+ * #define EVENT_MODIFY_STATE
+ * #define FALSE
+ * #define FILE_APPEND_DATA
+ * #define FILE_ATTRIBUTE_TEMPORARY
+ * #define FILE_FLAG_DELETE_ON_CLOSE
+ * #define FILE_SHARE_READ
+ * #define GENERIC_READ
+ * #define GENERIC_WRITE
+ * #define InterlockedExchange
+ * #define INVALID_FILE_ATTRIBUTES
+ * #define INVALID_HANDLE_VALUE
+ * #define MAX_PATH
+ * #define MOVEFILE_COPY_ALLOWED
+ * #define MOVEFILE_REPLACE_EXISTING
+ * #define MOVEFILE_WRITE_THROUGH
+ * #define NO_ERROR
+ * #define OPEN_ALWAYS
+ * #define OPEN_EXISTING
+ * #define SYNCHRONIZE
+ * #define WAIT_OBJECT_0
+ * #define WAIT_TIMEOUT
+ * #define WINAPI
+ * typedef	BOOL;
+ * typedef	DWORD;
+ * typedef	HANDLE;
+ * typedef	HMODULE;
+ * typedef	LARGE_INTEGER;
+ * typedef	LONG;
+ * typedef	LPVOID;
+ * typedef	PDWORD;
+ * typedef	PROCESS_INFORMATION;
+ * typedef	PUCHAR;
+ * typedef	PVOID;
+ * typedef	STARTUPINFOW;
+ * typedef	SYSTEMTIME;
+ * typedef	ULONG;
+ * typedef	WCHAR;
+ * typedef	WIN32_FIND_DATAW;
+ * BOOL		CloseHandle(HANDLE);
+ * HANDLE	CreateEventW(LPSECURITY_ATTRIBUTES, BOOL, BOOL, LPCWSTR);
+ * HANDLE	CreateFileW(
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	DWORD,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	DWORD,
+ * 	DWORD,
+ * 	HANDLE
+ * );
+ * BOOL		CreateProcessW(
+ * 	LPCWSTR,
+ * 	LPWSTR,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	BOOL,
+ * 	DWORD,
+ * 	LPVOID,
+ * 	LPCWSTR,
+ * 	LPSTARTUPINFOW,
+ * 	LPPROCESS_INFORMATION
+ * );
+ * BOOL		DeleteFileW(LPCWSTR);
+ * void		ExitProcess(UINT);
+ * BOOL		FindClose(HANDLE);
+ * HANDLE	FindFirstFileW(LPCWSTR, LPWIN32_FIND_DATAW);
+ * BOOL		FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
+ * BOOL		FreeLibrary(HMODULE);
+ * LPWSTR	GetCommandLineW(void);
+ * DWORD	GetCurrentProcessId(void);
+ * DWORD	GetEnvironmentVariableW(LPCWSTR, LPWSTR, DWORD);
+ * DWORD	GetFileAttributesW(LPCWSTR);
+ * BOOL		GetFileSizeEx(HANDLE, PLARGE_INTEGER);
+ * DWORD	GetLastError(void);
+ * void		GetLocalTime(LPSYSTEMTIME);
+ * DWORD	GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
+ * FARPROC	GetProcAddress(HMODULE, LPCSTR);
+ * DWORD	GetTempPathW(DWORD, LPWSTR);
+ * DWORD	GetTickCount(void);
+ * HMODULE	LoadLibraryW(LPCWSTR);
+ * LPWSTR	lstrcatW(LPWSTR, LPCWSTR);
+ * int		lstrcmpiW(LPCWSTR, LPCWSTR);
+ * LPWSTR	lstrcpynW(LPWSTR, LPCWSTR, int);
+ * LPWSTR	lstrcpyW(LPWSTR, LPCWSTR);
+ * int		lstrlenW(LPCWSTR);
+ * BOOL		MoveFileExW(LPCWSTR, LPCWSTR, DWORD);
+ * HANDLE	OpenEventW(DWORD, BOOL, LPCWSTR);
+ * HANDLE	OpenProcess(DWORD, BOOL, DWORD);
+ * BOOL		ReadFile(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);
+ * DWORD	ResumeThread(HANDLE);
+ * BOOL		SetEvent(HANDLE);
+ * void		Sleep(DWORD);
+ * DWORD	WaitForMultipleObjects(DWORD, const HANDLE *, BOOL, DWORD);
+ * DWORD	WaitForSingleObject(HANDLE, DWORD);
+ * BOOL		WriteFile(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
  */
 #include <winhttp.h>
 /******* """""""""""
- * WinHttpOpen(), WinHttpReadData()
+ * #define INTERNET_SCHEME_HTTPS
+ * #define WINHTTP_ACCESS_TYPE_DEFAULT_PROXY
+ * #define WINHTTP_ADDREQ_FLAG_ADD
+ * #define WINHTTP_DEFAULT_ACCEPT_TYPES
+ * #define WINHTTP_FLAG_SECURE
+ * #define WINHTTP_HEADER_NAME_BY_INDEX
+ * #define WINHTTP_NO_ADDITIONAL_HEADERS
+ * #define WINHTTP_NO_HEADER_INDEX
+ * #define WINHTTP_NO_PROXY_BYPASS
+ * #define WINHTTP_NO_PROXY_NAME
+ * #define WINHTTP_NO_REFERER
+ * #define WINHTTP_NO_REQUEST_DATA
+ * #define WINHTTP_QUERY_FLAG_NUMBER
+ * #define WINHTTP_QUERY_STATUS_CODE
+ * typedef		HINTERNET;
+ * typedef		URL_COMPONENTS;
+ * BOOL			WinHttpAddRequestHeaders(HINTERNET, LPCWSTR, DWORD, DWORD);
+ * BOOL			WinHttpCloseHandle(HINTERNET);
+ * HINTERNET	WinHttpConnect(HINTERNET, LPCWSTR, INTERNET_PORT, DWORD);
+ * BOOL			WinHttpCrackUrl(LPCWSTR, DWORD, DWORD, LPURL_COMPONENTS);
+ * HINTERNET	WinHttpOpen(LPCWSTR, DWORD, LPCWSTR, LPCWSTR, DWORD);
+ * HINTERNET	WinHttpOpenRequest(
+ * 	HINTERNET,
+ * 	LPCWSTR,
+ * 	LPCWSTR,
+ * 	LPCWSTR,
+ * 	LPCWSTR,
+ * 	LPCWSTR *,
+ * 	DWORD
+ * );
+ * BOOL			WinHttpQueryHeaders(
+ * 	HINTERNET,
+ * 	DWORD,
+ * 	LPCWSTR,
+ * 	LPVOID,
+ * 	LPDWORD,
+ * 	LPDWORD
+ * );
+ * BOOL			WinHttpReadData(HINTERNET, LPVOID, DWORD, LPDWORD);
+ * BOOL			WinHttpReceiveResponse(HINTERNET, LPVOID);
+ * BOOL			WinHttpSendRequest(
+ * 	HINTERNET,
+ * 	LPCWSTR,
+ * 	DWORD,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	DWORD,
+ * 	DWORD_PTR
+ * );
+ * BOOL			WinHttpSetTimeouts(HINTERNET, int, int, int, int);
  */
 #include <bcrypt.h>
 /******* """"""""""
- * BCryptHashData(), BCryptGenRandom()
+ * #define BCRYPT_SHA256_ALGORITHM
+ * #define BCRYPT_USE_SYSTEM_PREFERRED_RNG
+ * typedef	BCRYPT_ALG_HANDLE;
+ * typedef	BCRYPT_HASH_HANDLE;
+ * NTSTATUS	BCryptCloseAlgorithmProvider(BCRYPT_ALG_HANDLE, ULONG);
+ * NTSTATUS	BCryptCreateHash(
+ * 	BCRYPT_ALG_HANDLE,
+ * 	BCRYPT_HASH_HANDLE *,
+ * 	PUCHAR,
+ * 	ULONG,
+ * 	PUCHAR,
+ * 	ULONG,
+ * 	ULONG
+ * );
+ * NTSTATUS	BCryptDestroyHash(BCRYPT_HASH_HANDLE);
+ * NTSTATUS	BCryptFinishHash(BCRYPT_HASH_HANDLE, PUCHAR, ULONG, ULONG);
+ * NTSTATUS	BCryptGenRandom(BCRYPT_ALG_HANDLE, PUCHAR, ULONG, ULONG);
+ * NTSTATUS	BCryptHashData(BCRYPT_HASH_HANDLE, PUCHAR, ULONG, ULONG);
+ * NTSTATUS	BCryptOpenAlgorithmProvider(
+ * 	BCRYPT_ALG_HANDLE *,
+ * 	LPCWSTR,
+ * 	LPCWSTR,
+ * 	ULONG
+ * );
  */
 #include <iphlpapi.h>
 /******* """"""""""""
- * MIB_TCPTABLE_OWNER_PID (FUNCTION LOADED LATER)
+ * #define MIB_TCP_STATE_ESTAB
+ * enum _TCP_TABLE_CLASS;
+ * typedef	MIB_TCPTABLE_OWNER_PID;
+ * typedef	TCP_TABLE_CLASS;
+ */
+#include <stdio.h>
+/******* """""""""
+ * int	snprintf(char *, size_t, const char *, ...);
+ * int	swprintf(wchar_t *, size_t, const wchar_t *, ...);
+ * int	vsnprintf(char *, size_t, const char *, va_list);
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * int				atoi(const char *);
+ * void				free(void *);
+ * void				*malloc(size_t);
+ * unsigned long	strtoul(const char *, char **, int);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * int		_stricmp(const char *, const char *);
+ * int		_strnicmp(const char *, const char *, size_t);
+ * void		*memset(void *, int, size_t);
+ * size_t	strcspn(const char *, const char *);
+ * size_t	strlen(const char *);
+ * char		*strstr(const char *, const char *);
+ * wchar_t	*wcsrchr(const wchar_t *, wchar_t);
+ */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	uint8_t;
+ */
+#include <stdarg.h>
+/******* """"""""""
+ * #define va_end(ap)
+ * #define va_start(ap, param)
+ * typedef	va_list;
+ */
+#include "version.h"
+/******* """""""""""
+ * #define INWAY_VERSION_A
+ * #define INWAY_VERSION_B
+ * #define INWAY_VERSION_C
+ * #define INWAY_VERSION_D
+ * #define INWAY_VERSION_TEXT
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void		TEXT_ADDN(struct S_TEXT *, const char *, size_t);
+ * void		TEXT_FREE(struct S_TEXT *);
+ * WCHAR	*UTF8_TO_WIDE(const char *);
+ * char		*WIDE_TO_UTF8(const WCHAR *);
+ */
+#include "lang.h"
+/******* """"""""
+ * enum E_STR;
+ * const char	*LANG(enum E_STR);
+ */
+#include "console.h"
+/******* """""""""""
+ * void	SAY(const char *);
+ * void	SAYF(const char *, ...);
+ */
+#include "host.h"
+/******* """"""""
+ * int	G_WORKER;
+ */
+#include "update.h"
+/******* """"""""""
+ * #define UPDATE_ASSET
+ * #define UPDATE_NOW_EVENT
+ * #define UPDATE_REPO
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
-#define HTTP_AGENT	L"INWAY/" L"" INWAY_VERSION_TEXT
+int						G_AUTO_UPDATE = 0;
+static volatile LONG	G__LAST_LOOK__ = 0; /* TICK OF THE LAST UPDATE_DUE() */
+
+#define HTTP_AGENT L"INWAY/" L"" INWAY_VERSION_TEXT
 
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                           HTTP                           |  \\//  */
@@ -68,17 +314,17 @@ static DWORD
 	)
 {
 	URL_COMPONENTS	PARTS;
-	HINTERNET	SESSION;
-	HINTERNET	CONNECT;
-	HINTERNET	REQUEST;
-	WCHAR		HOST[256];
-	WCHAR		PATH[2048];
-	char		PIECE[16384];
-	DWORD		STATUS;
-	DWORD		SIZE;
-	DWORD		GOT;
-	DWORD		DONE;
-	int		OK;
+	HINTERNET		SESSION;
+	HINTERNET		CONNECT;
+	HINTERNET		REQUEST;
+	WCHAR			HOST[256];
+	WCHAR			PATH[2048];
+	char			PIECE[16384];
+	DWORD			STATUS;
+	DWORD			SIZE;
+	DWORD			GOT;
+	DWORD			DONE;
+	int				OK;
 
 	memset(&PARTS, 0, sizeof(PARTS));
 	PARTS.dwStructSize = sizeof(PARTS);
@@ -301,8 +547,8 @@ static int
 	const int	MINE[4] = {
 		INWAY_VERSION_A, INWAY_VERSION_B, INWAY_VERSION_C, INWAY_VERSION_D
 	};
-	int		THEIRS[4];
-	int		I;
+	int			THEIRS[4];
+	int			I;
 	const char	*P;
 
 	P = TAG;
@@ -345,12 +591,12 @@ static int
 	static const char	HEX[] = "0123456789abcdef";
 	BCRYPT_ALG_HANDLE	ALG;
 	BCRYPT_HASH_HANDLE	HASH;
-	HANDLE		FILE_HANDLE;
-	uint8_t		DIGEST[32];
-	uint8_t		*PIECE;
-	DWORD		GOT;
-	int		OK;
-	int		I;
+	HANDLE				FILE_HANDLE;
+	uint8_t				DIGEST[32];
+	uint8_t				*PIECE;
+	DWORD				GOT;
+	int					OK;
+	int					I;
 
 	OK = 0;
 	FILE_HANDLE = CreateFileW(
@@ -500,9 +746,9 @@ static void
 	CLEAN_TEMP(void)
 {
 	WIN32_FIND_DATAW	FD;
-	HANDLE		FIND;
-	WCHAR		DIR[MAX_PATH];
-	WCHAR		PATH[MAX_PATH * 2];
+	HANDLE				FIND;
+	WCHAR				DIR[MAX_PATH];
+	WCHAR				PATH[MAX_PATH * 2];
 
 	TEMP_DIR(DIR);
 	swprintf(PATH, MAX_PATH * 2, L"%ls\\INWAY-NEW-*.exe", DIR);
@@ -591,9 +837,9 @@ static int
 	)
 {
 	struct S_TEXT	BODY = {0};
-	WCHAR		EXE[MAX_PATH];
-	char		MINE[80];
-	int		OK;
+	WCHAR			EXE[MAX_PATH];
+	char			MINE[80];
+	int				OK;
 
 	if (HTTP_GET(
 		L"https://api.github.com/repos/" UPDATE_REPO L"/releases/latest",
@@ -629,7 +875,7 @@ static int
 	HANDLE	FILE_HANDLE;
 	WCHAR	*WIDE_URL;
 	char	GOT[80];
-	int	OK;
+	int		OK;
 
 	FILE_HANDLE = CreateFileW(
 		TARGET,
@@ -661,19 +907,19 @@ void
 {
 	STARTUPINFOW		SI;
 	PROCESS_INFORMATION	PI;
-	WCHAR			EXE[MAX_PATH];
-	WCHAR			DIR[MAX_PATH];
-	WCHAR			NEW_EXE[MAX_PATH * 2];
-	WCHAR			NOTE[MAX_PATH * 2];
-	WCHAR			*COMMAND;
-	char			PID_LINE[32];
-	char			TAG[64];
-	char			URL[600];
-	char			SHA[80];
-	char			*NOTE_TEXT;
-	size_t			CHARS;
-	HANDLE			FILE_HANDLE;
-	DWORD			DONE;
+	WCHAR				EXE[MAX_PATH];
+	WCHAR				DIR[MAX_PATH];
+	WCHAR				NEW_EXE[MAX_PATH * 2];
+	WCHAR				NOTE[MAX_PATH * 2];
+	WCHAR				*COMMAND;
+	char				PID_LINE[32];
+	char				TAG[64];
+	char				URL[600];
+	char				SHA[80];
+	char				*NOTE_TEXT;
+	size_t				CHARS;
+	HANDLE				FILE_HANDLE;
+	DWORD				DONE;
 
 	CLEAN_TEMP();
 	GetModuleFileNameW(NULL, EXE, MAX_PATH);
@@ -784,16 +1030,16 @@ void
 void
 	UPDATE_FINISH(void)
 {
-	WCHAR		NOTE[MAX_PATH * 2];
-	WCHAR		SELF[MAX_PATH];
-	WCHAR		*OLD;
-	char		TEXT[2048];
-	char		*LINE;
-	char		*TAG;
-	HANDLE		FILE_HANDLE;
-	HANDLE		PROCESS;
-	DWORD		GOT;
-	DWORD		PID;
+	WCHAR	NOTE[MAX_PATH * 2];
+	WCHAR	SELF[MAX_PATH];
+	WCHAR	*OLD;
+	char	TEXT[2048];
+	char	*LINE;
+	char	*TAG;
+	HANDLE	FILE_HANDLE;
+	HANDLE	PROCESS;
+	DWORD	GOT;
+	DWORD	PID;
 	int		I;
 	int		GONE;
 
@@ -884,14 +1130,14 @@ void
 void
 	UPDATE_LOG(const char *FORMAT, ...)
 {
-	WCHAR		PATH[MAX_PATH];
-	WCHAR		*SLASH;
-	HANDLE		FILE_HANDLE;
-	SYSTEMTIME	NOW;
-	char		LINE[512];
-	va_list		A;
-	int		N;
-	DWORD		DONE;
+	WCHAR			PATH[MAX_PATH];
+	WCHAR			*SLASH;
+	HANDLE			FILE_HANDLE;
+	SYSTEMTIME		NOW;
+	char			LINE[512];
+	va_list			A;
+	int				N;
+	DWORD			DONE;
 	LARGE_INTEGER	SIZE;
 
 	GetModuleFileNameW(NULL, PATH, MAX_PATH);
@@ -959,7 +1205,7 @@ void
 static int
 	SESSION_ACTIVE(void)
 {
-	typedef DWORD	(WINAPI *T_GET_TABLE)(
+	typedef DWORD			(WINAPI *T_GET_TABLE)(
 		PVOID TABLE,
 		PDWORD SIZE,
 		BOOL SORT,
@@ -967,12 +1213,12 @@ static int
 		TCP_TABLE_CLASS CLASS,
 		ULONG RESERVED
 	);
-	HMODULE				IPHLP;
-	T_GET_TABLE			GET_TABLE;
+	HMODULE					IPHLP;
+	T_GET_TABLE				GET_TABLE;
 	MIB_TCPTABLE_OWNER_PID	*TABLE;
-	DWORD				SIZE;
-	DWORD				I;
-	int				ACTIVE;
+	DWORD					SIZE;
+	DWORD					I;
+	int						ACTIVE;
 
 	IPHLP = LoadLibraryW(L"iphlpapi.dll");
 	GET_TABLE = IPHLP ?
@@ -1047,18 +1293,20 @@ void
 {
 	STARTUPINFOW		SI;
 	PROCESS_INFORMATION	PI;
-	WCHAR			EXE[MAX_PATH];
-	WCHAR			NEW_EXE[MAX_PATH + 16];
-	WCHAR			COMMAND[MAX_PATH + 48];
-	WCHAR			*SLASH;
-	char			TAG[64];
-	char			URL[600];
-	char			SHA[80];
-	DWORD			WAIT;
-	DWORD			NEXT_CHECK;
-	DWORD			WAITED;
-	int			PENDING;
-	int			FOUND;
+	WCHAR				EXE[MAX_PATH];
+	WCHAR				NEW_EXE[MAX_PATH + 16];
+	WCHAR				COMMAND[MAX_PATH + 48];
+	WCHAR				*SLASH;
+	char				TAG[64];
+	char				URL[600];
+	char				SHA[80];
+	HANDLE				WAKE[2];
+	DWORD				WAIT;
+	DWORD				HOW;
+	DWORD				NEXT_CHECK;
+	DWORD				WAITED;
+	int					PENDING;
+	int					FOUND;
 
 	GetModuleFileNameW(NULL, EXE, MAX_PATH);
 	lstrcpynW(NEW_EXE, EXE, MAX_PATH);
@@ -1073,9 +1321,17 @@ void
 	WAITED = 0;
 	NEXT_CHECK = 3 * 60000 + RANDOM_MS(12 * 60000);
 	WAIT = 60000;
-	while (WaitForSingleObject(STOP, WAIT) == WAIT_TIMEOUT)
+	WAKE[0] = STOP;
+	WAKE[1] = CreateEventW(NULL, FALSE, FALSE, UPDATE_NOW_EVENT);
+	while ((HOW = WaitForMultipleObjects(
+		WAKE[1] ? 2 : 1,
+		WAKE,
+		FALSE,
+		WAIT
+	)) == WAIT_TIMEOUT || HOW == WAIT_OBJECT_0 + 1)
 	{
-		WAITED += WAIT;
+		/* THE HELPER SAW SOMEONE CONNECT AND A NEWER INWAY: LOOK NOW */
+		WAITED = (HOW == WAIT_OBJECT_0 + 1) ? NEXT_CHECK : WAITED + WAIT;
 		if (!PENDING && WAITED >= NEXT_CHECK)
 		{
 			WAITED = 0;
@@ -1130,13 +1386,109 @@ void
 			UPDATE_LOG("starting the swap to %s", TAG);
 			CloseHandle(PI.hThread);
 			CloseHandle(PI.hProcess);
-			return ; /* THE HELPER STOPS THIS SERVICE NOW */
+			break ; /* THE HELPER STOPS THIS SERVICE NOW */
 		}
 		UPDATE_LOG("could not start the new exe (error %lu)", GetLastError());
 		DeleteFileW(NEW_EXE);
 		PENDING = 0;
 		WAIT = 60000;
 	}
+	if (WAKE[1])
+	{
+		CloseHandle(WAKE[1]);
+	}
+}
+
+/*
+# A SERVER, JUST BEFORE IT LETS SOMEONE IN: IS A NEWER INWAY OUT? IT LOOKS AT
+# MOST ONCE IN 10 MINUTES: GITHUB ALLOWS 60 LOOKS AN HOUR FROM ONE INTERNET
+# CONNECTION. NO ANSWER FROM GITHUB IS "NO": THE SESSION GOES ON.
+*/
+int
+	UPDATE_DUE(void)
+{
+	HANDLE	EVENT;
+	DWORD	LAST;
+	char	TAG[64];
+	char	URL[600];
+	char	SHA[80];
+
+	if (G_WORKER)
+	{
+		EVENT = OpenEventW(SYNCHRONIZE, FALSE, UPDATE_NOW_EVENT);
+		if (!EVENT)
+		{
+			return (0); /* THE SERVICE WAS INSTALLED WITH -NOUPDATE */
+		}
+		CloseHandle(EVENT);
+	}
+	else if (!G_AUTO_UPDATE)
+	{
+		return (0);
+	}
+	LAST = (DWORD)G__LAST_LOOK__;
+	if (LAST && GetTickCount() - LAST < 10 * 60000)
+	{
+		return (0);
+	}
+	InterlockedExchange(&G__LAST_LOOK__, (LONG)(GetTickCount() | 1));
+	return (LATEST_RELEASE(
+		TAG,
+		sizeof(TAG),
+		URL,
+		sizeof(URL),
+		SHA,
+		sizeof(SHA)
+	) == 1);
+}
+
+/*
+# THE SERVICE HELPER TELLS THE SERVICE TO UPDATE NOW (IT STOPS THE HELPER).
+# THE NORMAL-RIGHTS SERVER UPDATES ITSELF: THIS PROCESS ENDS WHEN IT WORKED.
+*/
+void
+	UPDATE_NOW(void)
+{
+	HANDLE	EVENT;
+
+	if (G_WORKER)
+	{
+		EVENT = OpenEventW(EVENT_MODIFY_STATE, FALSE, UPDATE_NOW_EVENT);
+		if (EVENT)
+		{
+			SetEvent(EVENT);
+			CloseHandle(EVENT);
+			Sleep(60000); /* THE SERVICE STOPS THIS HELPER IN THE MEANTIME */
+		}
+		return ;
+	}
+	UPDATE_CHECK();
+}
+
+/*
+# THE NORMAL-RIGHTS SERVER ("-BACKGROUND") LOOKS AGAIN EVERY 6 HOURS (+/- 30
+# MINUTES), NEVER DURING A SESSION. IT CAN SIMPLY USE UPDATE_CHECK(): ITS
+# FOLDER IS ITS OWN, AND THE NEW EXE GOES ON WITH THE SAME COMMAND LINE.
+*/
+DWORD WINAPI
+	UPDATE_USER_THREAD(LPVOID PARAMETER)
+{
+	HANDLE	STOP;
+	DWORD	WAIT;
+
+	STOP = (HANDLE)PARAMETER;
+	WAIT = 6 * 3600000 - 30 * 60000 + RANDOM_MS(60 * 60000);
+	while (WaitForSingleObject(STOP, WAIT) == WAIT_TIMEOUT)
+	{
+		if (SESSION_ACTIVE())
+		{
+			WAIT = 10 * 60000; /* SOMEONE IS CONNECTED: LATER */
+			continue ;
+		}
+		UPDATE_CHECK(); /* ENDS THIS PROCESS WHEN A NEWER ONE TAKES OVER */
+		WAIT = 6 * 3600000 - 30 * 60000 + RANDOM_MS(60 * 60000);
+	}
+	return (0);
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                SERVERS UPDATE THEMSELVES                 |  //\\  */

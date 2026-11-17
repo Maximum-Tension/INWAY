@@ -1,5 +1,5 @@
 /******************************************************************************\
-# C - CODEC                                      #       Maximum Tension       #
+# C - codec                                      #       Maximum Tension       #
 ################################################################################
 #                                                #      -__            __-     #
 # Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
@@ -8,46 +8,161 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
-/******************************************************************************\
-|* __________________________________________________________________________ *|
-|*|                                  CODEC                                   |*|
-|*|__________________________________________________________________________|*|
-|*|             ________                                                     |*|
-|*| THE TILE PACKER. ONE BYTE OPERATIONS:                                    |*|
-|*| 00XXXXXX = COLOUR FROM THE CACHE, 01RRGGBB = SMALL DIFFERENCE, 10GGGGGG  |*|
-|*| + 1 BYTE = LUMA DIFFERENCE, 11XXXXXX = RUN OF 1 TO 62 PIXELS, 0XFE + 3   |*|
-|*| BYTES = FULL RGB COLOUR.                                                 |*|
-|*|__________________________________________________________________________|*|
-|*'..........................................................................'*|
-|* :                                                                        : *|
-|* :  v [C LANGUAGE]                                                        : *|
-|* : 1|                                                                     : *|
-|* : 2| size_t ENCODE_TILE(const uint32_t *SOURCE, int STRIDE, int W,       : *|
-|* : 3|                    int H,                                           : *|
-|* : 4|                    uint8_t *OUT);                                   : *|
-|* : 5|                                                                     : *|
-|* :                                                                        : *|
-|* '........................................................................' *|
-\******************************************************************************/
+
+/*
+# THE TILE PACKER. ONE BYTE OPERATIONS:
+# 00XXXXXX = COLOUR FROM THE CACHE, 01RRGGBB = SMALL DIFFERENCE, 10GGGGGG + 1
+# BYTE = LUMA DIFFERENCE, 11XXXXXX = RUN OF 1 TO 62 PIXELS, 0XFE + 3 BYTES =
+# FULL RGB COLOUR.
+*/
 
 /* **************************** [v] INCLUDES [v] **************************** */
 #include "inway.h"
 /******* """""""""
- * uint8_t, uint32_t, struct S_TEXT
+ * #define _WIN32_WINNT
+ * #define COBJMACROS
+ * #define WIN32_LEAN_AND_MEAN
+ */
+#include <windows.h>
+/******* """""""""""
+ * #define FAILED(hr)
+ * #define IsEqualGUID(rguid1, rguid2)
+ * #define SUCCEEDED(hr)
+ * #define TRUE
+ * typedef	HGLOBAL;
+ * typedef	HRESULT;
+ * typedef	LARGE_INTEGER;
+ * typedef	UINT;
+ * typedef	ULARGE_INTEGER;
+ * LPVOID	GlobalLock(HGLOBAL);
+ * BOOL		GlobalUnlock(HGLOBAL);
+ */
+#include <ole2.h>
+/******* """"""""
+ * #define IStream_Release(This)
+ * #define IStream_Seek(This, dlibMove, dwOrigin, plibNewPosition)
+ * enum tagCLSCTX;
+ * enum tagCOINIT;
+ * enum VARENUM;
+ * typedef	IStream;
+ * typedef	VARIANT;
+ * HRESULT	CoCreateInstance(
+ * 	const IID *const,
+ * 	LPUNKNOWN,
+ * 	DWORD,
+ * 	const IID *const,
+ * 	LPVOID *
+ * );
+ * HRESULT	CoInitializeEx(LPVOID, DWORD);
+ * void		CoUninitialize(void);
+ * void		VariantInit(VARIANTARG *);
+ */
+#include <mshtmhst.h>
+/******* """"""""""""
+ * #define IPropertyBag2_Release(This)
+ * #define IPropertyBag2_Write(This, cProperties, pPropBag, pvarValue)
+ * typedef	IPropertyBag2;
+ * typedef	PROPBAG2;
  */
 #include <wincodec.h>
 /******* """"""""""""
- * IWICImagingFactory, WICConvertBitmapSource()
+ * #define IWICBitmapDecoder_GetFrame(This, index, ppIBitmapFrame)
+ * #define IWICBitmapDecoder_Release(This)
+ * #define IWICBitmapEncoder_Commit(This)
+ * #define IWICBitmapEncoder_CreateNewFrame(
+ * 	This,
+ * 	ppIFrameEncode,
+ * 	ppIEncoderOptions
+ * )
+ * #define IWICBitmapEncoder_Initialize(This, pIStream, cacheOption)
+ * #define IWICBitmapEncoder_Release(This)
+ * #define IWICBitmapFrameDecode_GetSize(This, puiWidth, puiHeight)
+ * #define IWICBitmapFrameDecode_Release(This)
+ * #define IWICBitmapFrameEncode_Commit(This)
+ * #define IWICBitmapFrameEncode_Initialize(This, pIEncoderOptions)
+ * #define IWICBitmapFrameEncode_Release(This)
+ * #define IWICBitmapFrameEncode_SetPixelFormat(This, pPixelFormat)
+ * #define IWICBitmapFrameEncode_SetSize(This, uiWidth, uiHeight)
+ * #define IWICBitmapFrameEncode_WritePixels(
+ * 	This,
+ * 	lineCount,
+ * 	cbStride,
+ * 	cbBufferSize,
+ * 	pbPixels
+ * )
+ * #define IWICBitmapSource_CopyPixels(
+ * 	This,
+ * 	prc,
+ * 	cbStride,
+ * 	cbBufferSize,
+ * 	pbBuffer
+ * )
+ * #define IWICBitmapSource_Release(This)
+ * #define IWICImagingFactory_CreateDecoderFromStream(
+ * 	This,
+ * 	pIStream,
+ * 	pguidVendor,
+ * 	metadataOptions,
+ * 	ppIDecoder
+ * )
+ * #define IWICImagingFactory_CreateEncoder(
+ * 	This,
+ * 	guidContainerFormat,
+ * 	pguidVendor,
+ * 	ppIEncoder
+ * )
+ * #define IWICImagingFactory_CreateStream(This, ppIWICStream)
+ * #define IWICImagingFactory_Release(This)
+ * #define IWICStream_InitializeFromMemory(This, pbBuffer, cbBufferSize)
+ * #define IWICStream_Release(This)
+ * typedef		IWICBitmapDecoder;
+ * typedef		IWICBitmapEncoder;
+ * typedef		IWICBitmapFrameDecode;
+ * typedef		IWICBitmapFrameEncode;
+ * typedef		IWICBitmapSource;
+ * typedef		IWICImagingFactory;
+ * typedef		IWICStream;
+ * typedef		WICPixelFormatGUID;
+ * const GUID	CLSID_WICImagingFactory;
+ * const GUID	GUID_WICPixelFormat24bppBGR;
+ * const GUID	IID_IWICImagingFactory;
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * void	free(void *);
+ * void	*realloc(void *, size_t);
+ */
+#include <string.h>
+/******* """"""""""
+ * #define NULL
+ * typedef	size_t;
+ * void		*memset(void *, int, size_t);
+ */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	int8_t;
+ * typedef	uint32_t;
+ * typedef	uint8_t;
+ */
+#include "text.h"
+/******* """"""""
+ * struct S_TEXT;
+ * void	TEXT_ADDN(struct S_TEXT *, const char *, size_t);
+ */
+#include "codec.h"
+/******* """""""""
+ * #define JPEG_QUALITY
+ * struct S_JPEG;
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
-#define OP_RGB	0XFE
-#define OP_RUN	0XC0
-#define OP_DIFF	0X40
-#define OP_LUMA	0X80
+#define OP_RGB 0XFE
+#define OP_RUN 0XC0
+#define OP_DIFF 0X40
+#define OP_LUMA 0X80
 
 static int
 	PIXEL_HASH(uint32_t PIXEL)
@@ -72,13 +187,13 @@ size_t
 	uint32_t		PIXEL;
 	const uint32_t	*ROW;
 	size_t			N;
-	int			RUN;
-	int			X;
-	int			Y;
-	int			SLOT;
-	int			DR;
-	int			DG;
-	int			DB;
+	int				RUN;
+	int				X;
+	int				Y;
+	int				SLOT;
+	int				DR;
+	int				DG;
+	int				DB;
 
 	memset(INDEX, 0, sizeof(INDEX));
 	PREV = 0;
@@ -161,13 +276,13 @@ int
 	uint32_t	PREV;
 	uint32_t	*ROW;
 	size_t		I;
-	int		RUN;
-	int		X;
-	int		Y;
-	int		R;
-	int		G;
-	int		B;
-	int		DG;
+	int			RUN;
+	int			X;
+	int			Y;
+	int			R;
+	int			G;
+	int			B;
+	int			DG;
 	uint8_t		OP;
 	uint8_t		B2;
 
@@ -300,12 +415,12 @@ static int
 		UINT *ROW_BYTES
 	)
 {
-	size_t		NEED;
-	uint8_t		*BIGGER;
-	uint8_t		*D;
+	size_t			NEED;
+	uint8_t			*BIGGER;
+	uint8_t			*D;
 	const uint32_t	*ROW;
-	int			X;
-	int			Y;
+	int				X;
+	int				Y;
 
 	*ROW_BYTES = (UINT)((W * 3 + 3) & ~3);
 	NEED = (size_t)*ROW_BYTES * (size_t)H;
@@ -345,20 +460,20 @@ int
 		struct S_TEXT *OUTPUT
 	)
 {
-	IWICImagingFactory	*F;
-	IStream			*STREAM;
-	IWICBitmapEncoder	*ENCODER;
+	IWICImagingFactory		*F;
+	IStream					*STREAM;
+	IWICBitmapEncoder		*ENCODER;
 	IWICBitmapFrameEncode	*FRAME;
-	IPropertyBag2		*BAG;
-	PROPBAG2			OPTION;
-	VARIANT			VALUE;
-	WICPixelFormatGUID	FORMAT;
-	LARGE_INTEGER		ZERO;
-	ULARGE_INTEGER		END;
-	HGLOBAL			MEMORY;
-	void			*DATA;
-	UINT			ROW_BYTES;
-	int			OK;
+	IPropertyBag2			*BAG;
+	PROPBAG2				OPTION;
+	VARIANT					VALUE;
+	WICPixelFormatGUID		FORMAT;
+	LARGE_INTEGER			ZERO;
+	ULARGE_INTEGER			END;
+	HGLOBAL					MEMORY;
+	void					*DATA;
+	UINT					ROW_BYTES;
+	int						OK;
 
 	F = (IWICImagingFactory *)J->FACTORY;
 	if (!F || !TO_24_BIT(J, SOURCE, STRIDE, W, H, &ROW_BYTES))
@@ -450,14 +565,14 @@ int
 		int H
 	)
 {
-	IWICImagingFactory	*F;
-	IWICStream		*STREAM;
-	IWICBitmapDecoder	*DECODER;
+	IWICImagingFactory		*F;
+	IWICStream				*STREAM;
+	IWICBitmapDecoder		*DECODER;
 	IWICBitmapFrameDecode	*FRAME;
-	IWICBitmapSource	*CONVERTED;
-	UINT			FW;
-	UINT			FH;
-	int			OK;
+	IWICBitmapSource		*CONVERTED;
+	UINT					FW;
+	UINT					FH;
+	int						OK;
 
 	F = (IWICImagingFactory *)J->FACTORY;
 	if (!F || !SIZE)
