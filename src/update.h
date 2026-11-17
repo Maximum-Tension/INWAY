@@ -17,13 +17,17 @@
 |*|__________________________________________________________________________|*|
 |*|             ________                                                     |*|
 |*| THE GITHUB RELEASE AUTO UPDATER. ON EVERY START INWAY ASKS GITHUB FOR    |*|
-|*| THE LATEST RELEASE OF MAXIMUM-TENSION/INWAY AND COMPARES ITS TAG WITH    |*|
-|*| ITS OWN VERSION. ONLY THE NUMBERS ARE COMPARED: THE RUNNING EXE IS NEVER |*|
-|*| HASHED.                                                                  |*|
-|*| WHEN THE TAG IS NEWER:                                                   |*|
+|*| THE LATEST RELEASE OF MAXIMUM-TENSION/INWAY. IT UPDATES WHEN THE SHA-256 |*|
+|*| GITHUB GIVES FOR THAT RELEASE'S INWAY.EXE IS NOT THE SHA-256 OF THE      |*|
+|*| RUNNING EXE, SO TWO RELEASES ON THE SAME DAY ("20.26.11.17-MK1145",      |*|
+|*| "...-MK1151") WORK.                                                      |*|
+|*| TWO SAFETY RULES: A RELEASE WITH AN OLDER DATE THAN THIS EXE'S VERSION   |*|
+|*| IS NEVER INSTALLED, AND AN EXE NEXT TO "SRC\INWAY.H" (A TEST BUILD IN    |*|
+|*| THE SOURCE FOLDER) NEVER UPDATES ITSELF.                                 |*|
+|*| WHEN AN UPDATE IS DUE:                                                   |*|
 |*| 1. INWAY.EXE OF THAT RELEASE IS DOWNLOADED INTO %TMP% AND ITS SHA-256 IS |*|
-|*| CHECKED AGAINST THE "DIGEST" GITHUB GIVES FOR THAT FILE. A WRONG OR      |*|
-|*| MISSING DIGEST MEANS NO UPDATE.                                          |*|
+|*| CHECKED AGAINST THE SAME DIGEST AGAIN. A WRONG OR MISSING DIGEST MEANS   |*|
+|*| NO UPDATE.                                                               |*|
 |*| 2. THE NEW EXE IS STARTED, PAUSED, AND A NOTE NEXT TO IT IN %TMP% TELLS  |*|
 |*| IT WHERE THE OLD EXE IS. THEN THE OLD ONE CLOSES.                        |*|
 |*| 3. THE NEW ONE ("-UPDATE-FINISH") READS THE NOTE, WAITS FOR THE OLD ONE  |*|

@@ -290,9 +290,13 @@ static int
 	return (0);
 }
 
-/* "V20.26.11.17" -> 1 WHEN IT IS NEWER THAN THIS EXE */
+/*
+# "20.26.11.17-MK1151" -> 1 WHEN ITS DATE IS THE SAME AS THIS EXE'S VERSION OR
+# NEWER. ONLY THE FIRST FOUR NUMBERS COUNT; WHAT COMES AFTER THEM (LIKE
+# "-MK1151") CAN BE ANYTHING. SAME DAY RELEASES ARE TOLD APART BY SHA-256.
+*/
 static int
-	IS_NEWER(const char *TAG)
+	NOT_OLDER(const char *TAG)
 {
 	const int	MINE[4] = {
 		INWAY_VERSION_A, INWAY_VERSION_B, INWAY_VERSION_C, INWAY_VERSION_D
@@ -325,7 +329,7 @@ static int
 			return (THEIRS[I] > MINE[I]);
 		}
 	}
-	return (0);
+	return (1);
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                   READING THE RELEASE                    |  //\\  */
@@ -471,6 +475,26 @@ static int
 	return (lstrcmpiW(DIR, MINE) == 0);
 }
 
+/*
+# AN EXE NEXT TO "SRC\INWAY.H" IS A TEST BUILD IN THE SOURCE FOLDER. IT MUST
+# NOT REPLACE ITSELF WITH THE RELEASE THE MOMENT IT IS STARTED.
+*/
+static int
+	IS_SOURCE_FOLDER(const WCHAR *EXE)
+{
+	WCHAR	PATH[MAX_PATH + 16];
+	WCHAR	*SLASH;
+
+	lstrcpynW(PATH, EXE, MAX_PATH);
+	SLASH = wcsrchr(PATH, L'\\');
+	if (!SLASH)
+	{
+		return (0);
+	}
+	lstrcpyW(SLASH + 1, L"src\\inway.h");
+	return (GetFileAttributesW(PATH) != INVALID_FILE_ATTRIBUTES);
+}
+
 /* LEFTOVERS OF AN EARLIER UPDATE THAT COULD NOT BE MOVED */
 static void
 	CLEAN_TEMP(void)
@@ -551,8 +575,10 @@ static void
 /*  \\//  |                        THE UPDATE                        |  \\//  */
 /*   \/   #==========================================================#   \/   */
 /*
-# THE LATEST RELEASE: 1 WHEN IT IS NEWER AND HAS AN INWAY.EXE WITH A SHA-256,
-# 0 WHEN THERE IS NOTHING NEW, -1 WHEN GITHUB COULD NOT BE ASKED.
+# THE LATEST RELEASE. 1 = UPDATE: ITS INWAY.EXE HAS ANOTHER SHA-256 THAN THE
+# RUNNING EXE, AND ITS DATE IS NOT OLDER. 0 = NOTHING TO DO. -1 = GITHUB
+# COULD NOT BE ASKED. THE RUNNING EXE IS HASHED (ABOUT A MILLISECOND), SO A
+# PACKED AND SIGNED RELEASE MATCHES ITS OWN DIGEST EXACTLY.
 */
 static int
 	LATEST_RELEASE(
@@ -565,6 +591,8 @@ static int
 	)
 {
 	struct S_TEXT	BODY = {0};
+	WCHAR		EXE[MAX_PATH];
+	char		MINE[80];
 	int		OK;
 
 	if (HTTP_GET(
@@ -579,10 +607,19 @@ static int
 		return (-1);
 	}
 	OK = JSON_STRING(BODY.DATA, "tag_name", TAG, TAG_CAP) &&
-		IS_NEWER(TAG) &&
+		NOT_OLDER(TAG) &&
 		FIND_ASSET(BODY.DATA, URL, URL_CAP, SHA, SHA_CAP);
 	TEXT_FREE(&BODY);
-	return (OK);
+	if (!OK)
+	{
+		return (0);
+	}
+	GetModuleFileNameW(NULL, EXE, MAX_PATH);
+	if (FILE_SHA256(EXE, MINE) && _stricmp(MINE, SHA) == 0)
+	{
+		return (0); /* THIS IS ALREADY THAT EXACT FILE */
+	}
+	return (1);
 }
 
 /* DOWNLOADS URL TO TARGET AND KEEPS IT ONLY WHEN ITS SHA-256 IS RIGHT */
@@ -629,6 +666,7 @@ void
 	WCHAR			NEW_EXE[MAX_PATH * 2];
 	WCHAR			NOTE[MAX_PATH * 2];
 	WCHAR			*COMMAND;
+	char			PID_LINE[32];
 	char			TAG[64];
 	char			URL[600];
 	char			SHA[80];
@@ -639,9 +677,9 @@ void
 
 	CLEAN_TEMP();
 	GetModuleFileNameW(NULL, EXE, MAX_PATH);
-	if (IS_SERVICE_COPY(EXE))
+	if (IS_SERVICE_COPY(EXE) || IS_SOURCE_FOLDER(EXE))
 	{
-		return ; /* THE SERVICE UPDATES THAT ONE BY ITSELF */
+		return ; /* THE SERVICE UPDATES ITS OWN; TEST BUILDS STAY */
 	}
 	if (!CAN_WRITE_HERE(EXE) || LATEST_RELEASE(
 		TAG,
@@ -716,13 +754,14 @@ void
 	);
 	if (FILE_HANDLE != INVALID_HANDLE_VALUE && NOTE_TEXT)
 	{
+		/* PID OF THIS EXE, ITS PATH, THE RELEASE NAME: ONE PER LINE */
 		snprintf(
-			TAG,
-			sizeof(TAG),
+			PID_LINE,
+			sizeof(PID_LINE),
 			"%lu\r\n",
 			(unsigned long)GetCurrentProcessId()
 		);
-		WriteFile(FILE_HANDLE, TAG, (DWORD)strlen(TAG), &DONE, NULL);
+		WriteFile(FILE_HANDLE, PID_LINE, (DWORD)strlen(PID_LINE), &DONE, NULL);
 		WriteFile(
 			FILE_HANDLE,
 			NOTE_TEXT,
@@ -730,6 +769,8 @@ void
 			&DONE,
 			NULL
 		);
+		WriteFile(FILE_HANDLE, "\r\n", 2, &DONE, NULL);
+		WriteFile(FILE_HANDLE, TAG, (DWORD)strlen(TAG), &DONE, NULL);
 		CloseHandle(FILE_HANDLE);
 	}
 	free(NOTE_TEXT);
@@ -748,6 +789,7 @@ void
 	WCHAR		*OLD;
 	char		TEXT[2048];
 	char		*LINE;
+	char		*TAG;
 	HANDLE		FILE_HANDLE;
 	HANDLE		PROCESS;
 	DWORD		GOT;
@@ -778,7 +820,16 @@ void
 	{
 		++LINE;
 	}
-	LINE[strcspn(LINE, "\r\n")] = '\0';
+	TAG = LINE + strcspn(LINE, "\r\n");
+	if (*TAG)
+	{
+		*TAG++ = '\0';
+	}
+	while (*TAG == '\r' || *TAG == '\n')
+	{
+		++TAG;
+	}
+	TAG[strcspn(TAG, "\r\n")] = '\0';
 	OLD = UTF8_TO_WIDE(LINE);
 	PROCESS = OpenProcess(SYNCHRONIZE, FALSE, PID);
 	if (PROCESS)
@@ -809,7 +860,7 @@ void
 	if (GONE)
 	{
 		SAY("\n  {g}");
-		SAYF(LANG(STR_U_DONE), INWAY_VERSION_TEXT);
+		SAYF(LANG(STR_U_DONE), *TAG ? TAG : INWAY_VERSION_TEXT);
 		SAY("{0}\n");
 	}
 	else

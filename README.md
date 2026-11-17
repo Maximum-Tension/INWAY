@@ -161,11 +161,16 @@ INWAY uses its own port (`50506`), service name and folder, so it can run next t
 
 # Updates
 
-Every time INWAY starts, it asks GitHub for the latest release and compares the **tag** with its own version. It only compares numbers: **it never hashes its own EXE**.
+Every time INWAY starts, it asks GitHub for the latest release and reads the **SHA-256** GitHub gives for its `INWAY.exe` (the `digest` you see under every release file). Then it hashes **its own EXE**. **Different hash = update.** So two releases on the same day (`20.26.11.17-Mk1145`, then `20.26.11.17-Mk1151`) work too.
 
-When the tag is newer:
+Two rules keep it safe:
 
-1. It downloads `INWAY.exe` of that release into `%TMP%` and checks its **SHA-256** against the `digest` GitHub computes for every release file. Wrong or missing: no update.
+* **Never backwards.** A release whose date is older than the running EXE's version is never installed.
+* **Never in the source folder.** An `INWAY.exe` that sits next to `src\inway.h` is a test build, so it never replaces itself. Copy it somewhere else to test the updater.
+
+When an update is due:
+
+1. It downloads `INWAY.exe` of that release into `%TMP%` and checks its SHA-256 against the same `digest` again. Wrong or missing: no update.
 2. It starts the new EXE and leaves it a small note in `%TMP%` that says where the old EXE is. The old one closes.
 3. The new one reads the note, puts itself in the old one's place, deletes the note and goes on with the same command line.
 
@@ -177,7 +182,7 @@ The copy in `C:\Program Files\INWAY` belongs to the background service, and the 
 
 1. Set the new version in [`src/version.h`](src/version.h). It is the date: `YY.YY.MM.DD`, so 2026/11/17 is `20.26.11.17`.
 2. Build with `MAKE.bat`.
-3. Make a GitHub release with the tag **`v20.26.11.17`** and attach **`INWAY.exe`** with exactly that name.
+3. Make a GitHub release. The tag **starts with the date**, anything after it is yours: **`20.26.11.17-Mk1151`**. Attach **`INWAY.exe`** with exactly that name.
 
 That's all. GitHub makes the SHA-256 by itself, so there is no `.sha256` file to upload.
 

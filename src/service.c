@@ -844,7 +844,7 @@ int
 	CloseServiceHandle(M);
 	if (MOVED)
 	{
-		UPDATE_LOG("updated to %s", INWAY_VERSION_TEXT);
+		UPDATE_LOG("updated (version %s)", INWAY_VERSION_TEXT);
 		return (0);
 	}
 	UPDATE_LOG(
