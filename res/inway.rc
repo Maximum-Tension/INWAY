@@ -1,0 +1,126 @@
+/******************************************************************************\
+# RC - INWAY                                     #       Maximum Tension       #
+################################################################################
+#                                                #      -__            __-     #
+# Teoman Deniz                                   #  :    :!1!-_    _-!1!:    : #
+# maximum-tension.com                            #  ::                      :: #
+#                                                #  :!:    : :: : :  :  ::::!: #
+# +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
+# : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
+# :---------------------::---------------------: #   :!1!!11000000000011!!:    #
+# :  License - GPL-3.0  :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# +.....................++.....................+ #       ::::!::!:::!::::      #
+\******************************************************************************/
+/******************************************************************************\
+|* __________________________________________________________________________ *|
+|*|                             INWAY RESOURCES                              |*|
+|*|__________________________________________________________________________|*|
+|*|             ________                                                     |*|
+|*| EVERYTHING THAT IS BUILT INTO INWAY.EXE BESIDES THE CODE: THE ICON, THE  |*|
+|*| MANIFEST (MODERN CONTROLS, SHARP ON HIGH DPI SCREENS, NO ADMIN PROMPT),  |*|
+|*| THE TWO HTML POPUP PAGES AND THE VERSION DETAILS WINDOWS SHOWS IN THE    |*|
+|*| FILE'S PROPERTIES, IN ENGLISH AND TURKISH.                               |*|
+|*| THE VERSION NUMBERS COME FROM SRC/VERSION.H, SO THEY ARE CHANGED IN ONE  |*|
+|*| PLACE ONLY. THIS FILE IS UTF-8.                                          |*|
+|*|__________________________________________________________________________|*|
+|*'..........................................................................'*|
+|* :                                                                        : *|
+|* :  v [C LANGUAGE]                                                        : *|
+|* : 1|                                                                     : *|
+|* : 2| windres --codepage=65001 -I src -I res -i res\inway.rc -O coff      : *|
+|* : 3|         -o build\inway.res.o                                        : *|
+|* : 4|                                                                     : *|
+|* :                                                                        : *|
+|* '........................................................................' *|
+\******************************************************************************/
+
+#pragma code_page(65001)
+
+/* **************************** [v] INCLUDES [v] **************************** */
+#include <windows.h>
+/******* """""""""""
+ * VS_VERSION_INFO, VOS_NT_WINDOWS32, VFT_APP
+ */
+#include "version.h"
+/******* """""""""""
+ * #define INWAY_VERSION_A ... INWAY_VERSION_TEXT
+ */
+/* **************************** [^] INCLUDES [^] **************************** */
+
+/* ***************************** [v] FILES [v] ****************************** */
+1			ICON	"inway.ico"
+1			24	"inway.manifest"	/* 24 = RT_MANIFEST */
+ACCEPT.HTM	23	"accept.htm"	/* 23 = RT_HTML, OPENED AS RES:// */
+BANNER.HTM	23	"banner.htm"
+/* ***************************** [^] FILES [^] ****************************** */
+
+/* ************************ [v] VERSION DETAILS [v] ************************* */
+1 VERSIONINFO
+FILEVERSION		INWAY_VERSION_A, INWAY_VERSION_B, INWAY_VERSION_C, INWAY_VERSION_D
+PRODUCTVERSION	INWAY_VERSION_A, INWAY_VERSION_B, INWAY_VERSION_C, INWAY_VERSION_D
+FILEFLAGSMASK	0X3F
+FILEFLAGS	0X0
+FILEOS		0X4
+FILETYPE	0X1
+{
+	BLOCK "StringFileInfo"
+	{
+		BLOCK "040904B0"
+		{
+			VALUE "CompanyName", "Maximum Tension Lab."
+			VALUE "LegalTrademarks", "Maximum Tension Lab."
+			VALUE "Developer", "Teoman Deniz"
+			VALUE "Signer", "Maximum Tension Lab."
+			VALUE "OriginalFilename", "INWAY.exe"
+			VALUE "Comments", "Peer-to-peer remote desktop for Windows PCs on the same network"
+			VALUE "FileDescription", "INWAY - LAN remote desktop"
+			VALUE "InternalName", "INWAY"
+			VALUE "ProductName", "INWAY"
+			VALUE "LegalCopyright", "© 2026 Teoman Deniz"
+			VALUE "CopyrightOwner", "Maximum Tension Lab."
+			VALUE "CopyrightNotice", "© 2026 Maximum Tension Lab."
+			VALUE "License", "GPL-3.0"
+			VALUE "Build", "2026"
+			VALUE "BuildDate", "2026-11-17"
+			VALUE "FileVersion", INWAY_VERSION_TEXT
+			VALUE "ProductVersion", INWAY_VERSION_TEXT
+			VALUE "Debugger", "0"
+			VALUE "SupportedOS", "Windows 10, Windows 11"
+			VALUE "URL", "https://maximum-tension.com"
+			VALUE "Repository", "https://github.com/Maximum-Tension/INWAY"
+			VALUE "SupportEmail", "teo@maximum-tension.com"
+		}
+
+		BLOCK "041F04B0"
+		{
+			VALUE "CompanyName", "Maximum Tension Lab."
+			VALUE "LegalTrademarks", "Maximum Tension Lab."
+			VALUE "Developer", "Teoman Deniz"
+			VALUE "Signer", "Maximum Tension Lab."
+			VALUE "OriginalFilename", "INWAY.exe"
+			VALUE "Comments", "Aynı ağdaki Windows bilgisayarlar için eşler arası uzak masaüstü"
+			VALUE "FileDescription", "INWAY - Yerel ağ uzak masaüstü"
+			VALUE "InternalName", "INWAY"
+			VALUE "ProductName", "INWAY"
+			VALUE "LegalCopyright", "© 2026 Teoman Deniz"
+			VALUE "CopyrightOwner", "Maximum Tension Lab."
+			VALUE "CopyrightNotice", "© 2026 Maximum Tension Lab."
+			VALUE "License", "GPL-3.0"
+			VALUE "Build", "2026"
+			VALUE "BuildDate", "2026-11-17"
+			VALUE "FileVersion", INWAY_VERSION_TEXT
+			VALUE "ProductVersion", INWAY_VERSION_TEXT
+			VALUE "Debugger", "0"
+			VALUE "SupportedOS", "Windows 10, Windows 11"
+			VALUE "URL", "https://maximum-tension.com"
+			VALUE "Repository", "https://github.com/Maximum-Tension/INWAY"
+			VALUE "SupportEmail", "teo@maximum-tension.com"
+		}
+	}
+
+	BLOCK "VarFileInfo"
+	{
+		VALUE "Translation", 0X0409, 0X04B0, 0X041F, 0X04B0
+	}
+}
+/* ************************ [^] VERSION DETAILS [^] ************************* */
