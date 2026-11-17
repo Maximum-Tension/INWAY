@@ -54,7 +54,7 @@ Put the same `INWAY.exe` on both PCs. The first time it opens, Windows asks if I
 Open `INWAY.exe`. Sharing starts by itself. The yellow box shows two things:
 
 ```
-  ┌─ LET SOMEONE CONTROL THIS PC ─────────────┐
+  ┌─ LET SOMEONE CONTROL THIS PC ──────────────┐
   │                                            │
   │  Address   2.147                           │
   │  Code      942 853                         │
@@ -77,30 +77,30 @@ The other screen opens in a new window. Close that window to stop.
 
 ## Inside the remote window
 
-| What | How |
-| --- | --- |
-| Mouse, keyboard | Just use them, they go to the other PC |
-| Windows key | Works too, also Win + R, Win + E and so on |
-| Ctrl + Alt + Del | The menu at the top, or press **Ctrl + Alt + End** |
-| Copy and paste | Ctrl + C on one PC, Ctrl + V on the other. Text, files, folders |
-| Stop | Close the window, or press Ctrl + C in the black window |
+| What                   | How                                                                     |
+| ---------------------- | ----------------------------------------------------------------------- |
+| Mouse, keyboard        | Just use them, they go to the other PC                                  |
+| Windows key            | Works too, also `WIN` + `R`, `WIN` + `E` and so on                      |
+| `CTRL` + `ALT` + `DEL` | The menu at the top, or press **`CTRL` + `ALT` + `END`**                |
+| Copy and paste         | `CTRL` + `C` on one PC, `CTRL` + `V` on the other. Text, files, folders |
+| Stop                   | Close the window, or press `CTRL` + `C` in the black window             |
 
 Copied files go over right away, into a temp folder on the other PC, and are put on its clipboard when the last byte arrives. Big copies take a moment: wait for the "ready to paste" line before you paste. One copy can be up to 4 GB.
 
 ## Command line
 
-| Command | What it does |
-| --- | --- |
-| `INWAY.exe` | Share this PC and ask for another one to control |
-| `INWAY.exe -p 938572` | Use this code instead of a random one |
-| `INWAY.exe -c 2.253 948248` | Connect to `2.253` with that code. INWAY closes when the session ends |
-| `INWAY.exe -c 2.253` | Same, but they click Accept |
-| `INWAY.exe -install -p 938572` | Share this PC all the time, also on the lock screen (servers) |
-| `INWAY.exe -uninstall` | Remove that again |
-| `INWAY.exe -removeold` | Remove the old CONNECT tool from this PC |
-| `INWAY.exe -lang tr` | Language: `en` or `tr` (normally it follows Windows) |
-| `INWAY.exe -noupdate` | Don't look for a new version this time |
-| `INWAY.exe -h` | Show these |
+| Command                        | What it does                                                          |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `INWAY.exe`                    | Share this PC and ask for another one to control                      |
+| `INWAY.exe -p 938572`          | Use this code instead of a random one                                 |
+| `INWAY.exe -c 2.253 948248`    | Connect to `2.253` with that code. INWAY closes when the session ends |
+| `INWAY.exe -c 2.253`           | Same, but they click Accept                                           |
+| `INWAY.exe -install -p 938572` | Share this PC all the time, also on the lock screen (servers)         |
+| `INWAY.exe -uninstall`         | Remove that again                                                     |
+| `INWAY.exe -removeold`         | Remove the old CONNECT tool from this PC                              |
+| `INWAY.exe -lang tr`           | Language: `en` or `tr` (normally it follows Windows)                  |
+| `INWAY.exe -noupdate`          | Don't look for a new version this time                                |
+| `INWAY.exe -h`                 | Show these                                                            |
 
 A code can be written with a space too: `-p 938 572`.
 
@@ -129,13 +129,13 @@ Windows asks for permission: click **Yes**. INWAY copies itself to `C:\Program F
 * on the lock screen and the login screen, also right after a restart,
 * in Task Manager and other admin windows,
 * in "Do you want to allow this app?" popups,
-* and **Ctrl + Alt + Del** works from the menu.
+* and **`CTRL` + `ALT` + `DEL`** works from the menu.
 
 A server only lets people in with its code: nobody sits there to click Accept. After 5 wrong codes in a row it waits 30 seconds before it takes the next one.
 
 To change the code, run `-install` again with the new one. To take it out: `INWAY.exe -uninstall`.
 
-> **Why a service?** Windows only lets programs with system rights see the lock screen and admin windows, and only a service may press Ctrl + Alt + Del. Running INWAY "as administrator" fixes Task Manager, but not the lock screen.
+> **Why a service?** Windows only lets programs with system rights see the lock screen and admin windows, and only a service may press `CTRL` + `ALT` + `DEL`. Running INWAY "as administrator" fixes Task Manager, but not the lock screen.
 
 ## Moving PCs from CONNECT to INWAY
 
