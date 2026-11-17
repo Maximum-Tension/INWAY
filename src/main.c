@@ -44,6 +44,7 @@
  * #define WINAPI
  * typedef	BOOL;
  * typedef	DWORD;
+ * enum _COMPUTER_NAME_FORMAT;
  * typedef	HANDLE;
  * typedef	HMODULE;
  * typedef	PROCESS_INFORMATION;
@@ -65,6 +66,8 @@
  * );
  * void		EnterCriticalSection(LPCRITICAL_SECTION);
  * LPWSTR	GetCommandLineW(void);
+ * BOOL		GetComputerNameA(LPSTR, LPDWORD);
+ * BOOL		GetComputerNameExA(COMPUTER_NAME_FORMAT, LPSTR, LPDWORD);
  * DWORD	GetConsoleProcessList(LPDWORD, DWORD);
  * HWND		GetConsoleWindow(void);
  * DWORD	GetCurrentProcessId(void);
@@ -154,6 +157,7 @@
 #include "net.h"
 /******* """""""
  * uint32_t	G_MY_IP;
+ * int		ADDRESS_NAME(const char *, char *, size_t);
  * void		CODE_TEXT(int, char *, size_t);
  * void		IP_SHORT(uint32_t, char *, size_t);
  * int		PARSE_ADDRESS(const char *, uint32_t *);
@@ -450,6 +454,25 @@ static void
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                         SCREENS                          |  \\//  */
 /*   \/   #==========================================================#   \/   */
+/* THIS PC'S NAME, THE ONE OTHER PCS CAN TYPE INSTEAD OF THE ADDRESS */
+static int
+	MY_NAME(char *OUTPUT, size_t CAP)
+{
+	DWORD	SIZE;
+
+	SIZE = (DWORD)CAP;
+	OUTPUT[0] = '\0';
+	if (!GetComputerNameExA(ComputerNameDnsHostname, OUTPUT, &SIZE))
+	{
+		SIZE = (DWORD)CAP;
+		if (!GetComputerNameA(OUTPUT, &SIZE))
+		{
+			OUTPUT[0] = '\0';
+		}
+	}
+	return (OUTPUT[0] != '\0');
+}
+
 static void
 	TITLE_BOX(struct S_TEXT *OUTPUT, const char *TITLE)
 {
@@ -477,6 +500,7 @@ static void
 	char			ADDRESS[24];
 	char			CODE[16];
 	char			STATUS[64];
+	char			NAME[64];
 	int				COUNT;
 	int				I;
 
@@ -510,6 +534,10 @@ static void
 		TEXT_ADD(&L[COUNT++], "");
 		TEXT_ADDF(&L[COUNT++], "%-9s {y}%s{0}", LANG(STR_ADDRESS),
 			G_MY_IP ? ADDRESS : LANG(STR_NO_NETWORK));
+		if (MY_NAME(NAME, sizeof(NAME)))
+		{
+			TEXT_ADDF(&L[COUNT++], "%-9s {y}%s{0}", LANG(STR_NAME), NAME);
+		}
 		TEXT_ADDF(&L[COUNT++], "%-9s {y}%s{0}", LANG(STR_CODE),
 			(G_SVC_RUNNING && strlen(G_SVC_CODE) != 6) ?
 			LANG(STR_SVC_CODE_UNKNOWN) : CODE);
@@ -692,10 +720,11 @@ static void
 	SHOW_ADMIN_RESULT(const struct S_OPTIONS *O, int RESULT, int TELL_WHY)
 {
 	struct S_TEXT	OUTPUT = {0};
-	struct S_TEXT	L[6];
-	const char		*LINES[6];
+	struct S_TEXT	L[7];
+	const char		*LINES[7];
 	char			ADDRESS[24];
 	char			CODE[16];
+	char			NAME[64];
 	int				COUNT;
 	int				I;
 
@@ -742,6 +771,10 @@ static void
 			LANG(STR_ADDRESS),
 			G_MY_IP ? ADDRESS : "?"
 		);
+		if (MY_NAME(NAME, sizeof(NAME)))
+		{
+			TEXT_ADDF(&L[COUNT++], "%-9s {y}%s{0}", LANG(STR_NAME), NAME);
+		}
 		TEXT_ADDF(&L[COUNT++], "%-9s {y}%s{0}", LANG(STR_CODE), CODE);
 		TEXT_ADDF(&L[COUNT++], "{d}%s{0}", LANG(STR_I_TAKEOVER));
 		if (RESULT == SVC_DONE_USER)
@@ -762,7 +795,7 @@ static void
 	}
 	SAY("\n");
 	SAY(OUTPUT.DATA);
-	for (I = 0; I < 6; ++I)
+	for (I = 0; I < 7; ++I)
 	{
 		TEXT_FREE(&L[I]);
 	}
@@ -871,6 +904,43 @@ static int
 	return (RESULT == SVC_DONE || RESULT == SVC_DONE_USER ? 0 : 1);
 }
 
+/*
+# AN ADDRESS OR A PC NAME. A NAME IS LOOKED UP FIRST AND THEN SHOWN AS IT IS;
+# AN ADDRESS IS SHOWN SHORT ("2.253"). 0 = OK, OR THE REASON IS ON THE SCREEN.
+*/
+static int
+	FIND_PC(const char *INPUT, uint32_t *IP, char *LABEL, size_t CAP)
+{
+	int	NAMED;
+	int	RESULT;
+
+	NAMED = ADDRESS_NAME(INPUT, LABEL, CAP);
+	if (NAMED)
+	{
+		SAY("  {d}");
+		SAYF(LANG(STR_LOOKING), LABEL);
+		SAY("{0}\n");
+	}
+	RESULT = PARSE_ADDRESS(INPUT, IP);
+	if (RESULT == 2)
+	{
+		SAY("  {r}");
+		SAYF(LANG(STR_NO_SUCH_NAME), LABEL);
+		SAY("{0}\n");
+		return (2);
+	}
+	if (RESULT != 0)
+	{
+		SAYF("  {r}%s{0}\n", LANG(STR_BAD_ADDRESS));
+		return (1);
+	}
+	if (!NAMED)
+	{
+		IP_SHORT(*IP, LABEL, CAP);
+	}
+	return (0);
+}
+
 /* -C: CONNECT ONCE. WHEN THAT SESSION ENDS, INWAY ENDS. */
 static int
 	CONNECT_ONCE(const struct S_OPTIONS *O)
@@ -879,16 +949,15 @@ static int
 	enum E_RESULT	R;
 	uint32_t		IP;
 	DWORD			PIDS[4];
-	char			LABEL[24];
+	char			LABEL[64];
 
-	if (PARSE_ADDRESS(O->ADDRESS, &IP) != 0)
+	SAY("\n");
+	if (FIND_PC(O->ADDRESS, &IP, LABEL, sizeof(LABEL)) != 0)
 	{
-		SAYF("\n  {r}%s{0}\n", LANG(STR_BAD_ADDRESS));
 		PRESS_ENTER(STR_PRESS_ENTER_CLOSE);
 		return (1);
 	}
-	IP_SHORT(IP, LABEL, sizeof(LABEL));
-	SAY("\n  {c}");
+	SAY("  {c}");
 	SAYF(LANG(O->CONNECT_CODE[0] ? STR_CONNECTING : STR_WAITING), LABEL);
 	SAY("{0}\n");
 	G_HIDE_CONSOLE = 1;
@@ -927,7 +996,7 @@ static int
 	uint32_t		IP;
 	char			INPUT[128];
 	char			DIGITS[8];
-	char			LABEL[24];
+	char			LABEL[64];
 	const char		*ARROW;
 	size_t			K;
 	size_t			N;
@@ -954,9 +1023,8 @@ static int
 			{
 				continue ;
 			}
-			if (PARSE_ADDRESS(INPUT, &IP) != 0)
+			if (FIND_PC(INPUT, &IP, LABEL, sizeof(LABEL)) != 0)
 			{
-				SAYF("  {r}%s{0}\n", LANG(STR_BAD_ADDRESS));
 				continue ;
 			}
 			if (IP == G_MY_IP)
@@ -966,7 +1034,6 @@ static int
 			}
 			break ;
 		}
-		IP_SHORT(IP, LABEL, sizeof(LABEL));
 		/* 2) THE CODE, OR NOTHING TO ASK THEM */
 		for (;;)
 		{

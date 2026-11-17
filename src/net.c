@@ -30,6 +30,7 @@
  * #define INVALID_SOCKET
  * #define IPPROTO_UDP
  * #define SOCK_DGRAM
+ * #define SOCK_STREAM
  * typedef			SOCKET;
  * struct sockaddr;
  * struct sockaddr_in;
@@ -97,6 +98,7 @@
 /******* """"""""""
  * #define NULL
  * typedef	size_t;
+ * void		*memcpy(void *, const void *, size_t);
  * void		*memset(void *, int, size_t);
  */
 #include <stdint.h>
@@ -293,6 +295,83 @@ void
 # - MISSING FRONT NUMBERS COME FROM THIS PC'S ADDRESS (OR 192.168).
 # - RETURNS 0 WHEN IT WORKED, 1 WHEN IT DOES NOT LOOK LIKE AN ADDRESS.
 */
+/*
+# A PC NAME ("OFIS-PC", "OFIS-PC.LOCAL") INSTEAD OF AN ADDRESS: ANYTHING WITH
+# A LETTER IN IT. 1 = IT IS A NAME, WRITTEN WITHOUT SPACES TO OUTPUT.
+*/
+int
+	ADDRESS_NAME(const char *INPUT, char *OUTPUT, size_t CAP)
+{
+	const char	*P;
+	size_t		LEN;
+	int			LETTER;
+
+	while (*INPUT == ' ' || *INPUT == '\t')
+	{
+		++INPUT;
+	}
+	LEN = 0;
+	LETTER = 0;
+	for (P = INPUT; *P && *P != ' ' && *P != '\t'; ++P)
+	{
+		if ((*P >= 'A' && *P <= 'Z') || (*P >= 'a' && *P <= 'z'))
+		{
+			LETTER = 1;
+		}
+		else if (!((*P >= '0' && *P <= '9') || *P == '-' || *P == '.' ||
+			*P == '_'))
+		{
+			return (0);
+		}
+		++LEN;
+	}
+	if (!LETTER || !LEN || LEN > 63 || LEN >= CAP)
+	{
+		return (0);
+	}
+	memcpy(OUTPUT, INPUT, LEN);
+	OUTPUT[LEN] = '\0';
+	return (1);
+}
+
+/*
+# WINDOWS FINDS THE NAME: FIRST THE ROUTER (DNS), THEN THE PCS AROUND (MDNS,
+# LLMNR, NETBIOS). A PC WITH MORE THAN ONE ADDRESS: THE HOME NETWORK ONE.
+*/
+static int
+	RESOLVE_NAME(const char *NAME, uint32_t *OUTPUT)
+{
+	struct addrinfo	HINTS;
+	struct addrinfo	*LIST;
+	struct addrinfo	*P;
+	uint32_t		IP;
+	int				BEST;
+	int				RANK;
+
+	memset(&HINTS, 0, sizeof(HINTS));
+	HINTS.ai_family = AF_INET;
+	HINTS.ai_socktype = SOCK_STREAM;
+	LIST = NULL;
+	if (getaddrinfo(NAME, NULL, &HINTS, &LIST) != 0 || !LIST)
+	{
+		return (2);
+	}
+	BEST = 0;
+	for (P = LIST; P; P = P->ai_next)
+	{
+		IP = ntohl(((struct sockaddr_in *)P->ai_addr)->sin_addr.s_addr);
+		RANK = LAN_RANK(IP);
+		if (RANK > BEST)
+		{
+			BEST = RANK;
+			*OUTPUT = IP;
+		}
+	}
+	freeaddrinfo(LIST);
+	return (BEST ? 0 : 2);
+}
+
+/* 0 = OK, 1 = NOT AN ADDRESS OR A NAME, 2 = NO PC WITH THAT NAME WAS FOUND */
 int
 	PARSE_ADDRESS(const char *INPUT, uint32_t *OUTPUT)
 {
@@ -307,6 +386,10 @@ int
 	uint32_t	IP;
 	int			DIGITS;
 
+	if (ADDRESS_NAME(INPUT, CLEAN, sizeof(CLEAN)))
+	{
+		return (RESOLVE_NAME(CLEAN, OUTPUT));
+	}
 	LEN = 0;
 	for (P = INPUT; *P && LEN + 1 < sizeof(CLEAN); ++P)
 	{

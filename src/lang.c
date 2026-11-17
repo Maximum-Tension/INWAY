@@ -57,12 +57,14 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_STATUS_CONTROLLING] = "%s is controlling this PC",
 	[STR_CONNECT_TITLE] = "CONTROL ANOTHER PC",
 	[STR_CONNECT_HINT] =
-		"Type the Address shown on the other PC, then press Enter.",
-	[STR_EXAMPLE] = "Example: 2.253",
+		"Type the Address or the Name shown on the other PC, then press "
+		"Enter.",
+	[STR_EXAMPLE] = "Example: 2.253 or OFIS-PC",
 	[STR_CLOSING_STOPS] = "Closing this window stops everything.",
 
 	[STR_ASK_ADDRESS] = "Address of the other PC:",
-	[STR_BAD_ADDRESS] = "That doesn't look right. Type it like this: 2.253",
+	[STR_BAD_ADDRESS] =
+		"That doesn't look right. Type it like this: 2.253 or OFIS-PC",
 	[STR_SELF_ADDRESS] =
 		"That is THIS PC's address. Type the one shown on the OTHER PC.",
 	[STR_CODE_HINT] =
@@ -94,7 +96,7 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_R_NO_PC_T] = "COULD NOT CONNECT",
 	[STR_R_NO_PC] = "No PC answered at %s. Check that:",
 	[STR_R_NO_PC_1] = " - INWAY is open on that PC",
-	[STR_R_NO_PC_2] = " - you typed the right address",
+	[STR_R_NO_PC_2] = " - you typed the right address or name",
 	[STR_R_NO_PC_3] =
 		" - that PC clicked \"Allow access\" when Windows asked about it",
 	[STR_R_DROPPED] =
@@ -170,7 +172,7 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_PRESS_ENTER_CLOSE] = "Press Enter to close.",
 	[STR_PRESS_ENTER] = "Press Enter to continue.",
 	[STR_E_P] = "-p needs a 6-number code, like:  -p 938572",
-	[STR_E_C] = "-c needs an address, like:  -c 2.253",
+	[STR_E_C] = "-c needs an address or a name, like:  -c 2.253",
 	[STR_E_UNKNOWN] = "Unknown option: %s",
 	[STR_E_NET] = "Network start-up failed.",
 	[STR_HELP] =
@@ -178,6 +180,7 @@ static const char	*const G__EN__[STR__COUNT] =
 		"  INWAY.exe -p 938572           use this code for this PC\n"
 		"  INWAY.exe -c 2.253 948248     connect to 2.253 once, with a code\n"
 		"  INWAY.exe -c 2.253            connect to 2.253 once, they Accept\n"
+		"  INWAY.exe -c OFIS-PC 948248   a PC name works too\n"
 		"  INWAY.exe -install -p 938572  share all the time, also on the\n"
 		"                                lock screen (for servers)\n"
 		"  INWAY.exe -install            same, with a random code (or the\n"
@@ -208,7 +211,11 @@ static const char	*const G__EN__[STR__COUNT] =
 		"%s is updating INWAY first. Connecting again in a moment ...",
 	[STR_R_UPDATING_T] = "UPDATING",
 	[STR_R_UPDATING] =
-		"%s is still updating INWAY. Try again in a minute."
+		"%s is still updating INWAY. Try again in a minute.",
+	[STR_NAME] = "Name",
+	[STR_LOOKING] = "Looking for %s on this network ...",
+	[STR_NO_SUCH_NAME] =
+		"No PC called %s was found on this network. Try its Address."
 };
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         ENGLISH                          |  //\\  */
@@ -233,12 +240,14 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_STATUS_CONTROLLING] = "%s bu bilgisayarı kontrol ediyor",
 	[STR_CONNECT_TITLE] = "BAŞKA BİR BİLGİSAYARA BAĞLAN",
 	[STR_CONNECT_HINT] =
-		"Diğer bilgisayarın ekranında yazan Adresi yazıp Enter'a basın.",
-	[STR_EXAMPLE] = "Örnek: 2.253",
+		"Diğer bilgisayarın ekranında yazan Adresi ya da Adı yazıp "
+		"Enter'a basın.",
+	[STR_EXAMPLE] = "Örnek: 2.253 ya da OFIS-PC",
 	[STR_CLOSING_STOPS] = "Bu pencereyi kapatmak her şeyi durdurur.",
 
 	[STR_ASK_ADDRESS] = "Diğer bilgisayarın adresi:",
-	[STR_BAD_ADDRESS] = "Bu doğru görünmüyor. Şöyle yazın: 2.253",
+	[STR_BAD_ADDRESS] =
+		"Bu doğru görünmüyor. Şöyle yazın: 2.253 ya da OFIS-PC",
 	[STR_SELF_ADDRESS] =
 		"Bu, BU bilgisayarın adresi. DİĞER bilgisayarda yazanı girin.",
 	[STR_CODE_HINT] =
@@ -271,7 +280,7 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_R_NO_PC_T] = "BAĞLANILAMADI",
 	[STR_R_NO_PC] = "%s adresinde yanıt veren bilgisayar yok. Şunlara bakın:",
 	[STR_R_NO_PC_1] = " - INWAY o bilgisayarda açık mı",
-	[STR_R_NO_PC_2] = " - adresi doğru yazdınız mı",
+	[STR_R_NO_PC_2] = " - adresi ya da adı doğru yazdınız mı",
 	[STR_R_NO_PC_3] =
 		" - Windows sorduğunda o bilgisayarda \"Erişime izin ver\" "
 		"tıklandı mı",
@@ -351,7 +360,7 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_PRESS_ENTER_CLOSE] = "Kapatmak için Enter'a basın.",
 	[STR_PRESS_ENTER] = "Devam etmek için Enter'a basın.",
 	[STR_E_P] = "-p 6 rakamlı bir kod ister, örneğin:  -p 938572",
-	[STR_E_C] = "-c bir adres ister, örneğin:  -c 2.253",
+	[STR_E_C] = "-c bir adres ya da ad ister, örneğin:  -c 2.253",
 	[STR_E_UNKNOWN] = "Bilinmeyen seçenek: %s",
 	[STR_E_NET] = "Ağ başlatılamadı.",
 	[STR_HELP] =
@@ -359,6 +368,7 @@ static const char	*const G__TR__[STR__COUNT] =
 		"  INWAY.exe -p 938572           bu bilgisayar için bu kodu kullan\n"
 		"  INWAY.exe -c 2.253 948248     2.253'e kodla bir kez bağlan\n"
 		"  INWAY.exe -c 2.253            2.253'e bağlan, karşı taraf onaylar\n"
+		"  INWAY.exe -c OFIS-PC 948248   bilgisayar adı da olur\n"
 		"  INWAY.exe -install -p 938572  her zaman paylaş, kilit ekranında\n"
 		"                                da (sunucular için)\n"
 		"  INWAY.exe -install            aynısı, rastgele kodla (ya da\n"
@@ -391,7 +401,11 @@ static const char	*const G__TR__[STR__COUNT] =
 		"%s önce INWAY'i güncelliyor. Birazdan yeniden bağlanılıyor ...",
 	[STR_R_UPDATING_T] = "GÜNCELLENİYOR",
 	[STR_R_UPDATING] =
-		"%s hâlâ INWAY'i güncelliyor. Bir dakika sonra tekrar deneyin."
+		"%s hâlâ INWAY'i güncelliyor. Bir dakika sonra tekrar deneyin.",
+	[STR_NAME] = "Ad",
+	[STR_LOOKING] = "%s bu ağda aranıyor ...",
+	[STR_NO_SUCH_NAME] =
+		"Bu ağda %s adında bir bilgisayar bulunamadı. Adresini deneyin."
 };
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         TURKISH                          |  //\\  */

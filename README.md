@@ -61,6 +61,7 @@ Open `INWAY.exe`. Sharing starts by itself. The yellow box shows two things:
   ┌─ LET SOMEONE CONTROL THIS PC ──────────────┐
   │                                            │
   │  Address   2.147                           │
+  │  Name      OFIS-PC                         │
   │  Code      942 853                         │
   │                                            │
   │  Give them the code, or just click Accept  │
@@ -68,7 +69,7 @@ Open `INWAY.exe`. Sharing starts by itself. The yellow box shows two things:
   └────────────────────────────────────────────┘
 ```
 
-Tell them the **Address**. Then either tell them the **Code** too, or don't, and click **Accept** when the INWAY window pops up on your screen. While someone is connected, a small window in the corner says who it is and has a **Disconnect** button.
+Tell them the **Address** or the **Name**. Then either tell them the **Code** too, or don't, and click **Accept** when the INWAY window pops up on your screen. While someone is connected, a small window in the corner says who it is and has a **Disconnect** button.
 
 When someone connects, Windows asks if INWAY may use **admin rights for that session**:
 
@@ -82,9 +83,10 @@ With **Yes**, a hidden admin copy of INWAY serves the session and the normal one
 
 ## Connect to another PC
 
-Open `INWAY.exe` and type the **Address** shown on the other PC, then press Enter.
+Open `INWAY.exe` and type the **Address** or the **Name** shown on the other PC, then press Enter.
 
 * `2.253` means `192.168.2.253`: the first two numbers come from your own PC. A full address works too.
+* **The name doesn't change** when the router gives that PC a new address, so for PCs you connect to often, use the name: `OFIS-PC`. Windows looks it up on your network first (the router, then the PCs around). When no PC answers to that name, INWAY says so: then use the address.
 * Then type the **Code**, or just press Enter: the other PC gets an **Accept / Cancel** window.
 
 The other screen opens in a new window. Close that window to stop.
@@ -109,6 +111,7 @@ Copied files go over right away, into a temp folder on the other PC, and are put
 | `INWAY.exe -p 938572`          | Use this code instead of a random one                                 |
 | `INWAY.exe -c 2.253 948248`    | Connect to `2.253` with that code. INWAY closes when the session ends |
 | `INWAY.exe -c 2.253`           | Same, but they click Accept                                           |
+| `INWAY.exe -c OFIS-PC 948248`  | Same, with the PC's name instead of its address                       |
 | `INWAY.exe -install -p 938572` | Share this PC all the time, also on the lock screen (servers)         |
 | `INWAY.exe -install`           | Same, with a random code (or the one the server already has)          |
 | `INWAY.exe -uninstall`         | Remove that again                                                     |
@@ -126,8 +129,10 @@ A code can be written with a space too: `-p 938 572`.
 ```bat
 @echo off
 cd /d "%~dp0"
-INWAY.exe -c 2.253 938572
+INWAY.exe -c OFIS-PC 938572
 ```
+
+With the PC's **name** the shortcut keeps working when the router gives that PC a new address.
 
 Don't put `pause` at the end, or the black window stays open. When the `.bat` goes on after INWAY, the black window comes back by itself when the session ends.
 
@@ -139,7 +144,7 @@ On a PC that stays on all the time, run this **once**:
 INWAY.exe -install -p 938572
 ```
 
-Without `-p`, it picks a random code and shows it in the green box when it is done. When the PC already has a server, `-install` without `-p` keeps that server's code, so running it again never changes the code by surprise.
+Without `-p`, it picks a random code and shows it in the green box when it is done, together with the address and the PC's name. When the PC already has a server, `-install` without `-p` keeps that server's code, so running it again never changes the code by surprise.
 
 Windows asks for admin rights, and **the answer decides what kind of server it becomes**:
 
