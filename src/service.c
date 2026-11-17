@@ -824,31 +824,32 @@ static void
 	RegCloseKey(KEY);
 }
 
-/* ASKS A RUNNING NORMAL-RIGHTS SERVER TO END, WAITS UNTIL IT IS GONE */
-static void
+/*
+# ASKS A RUNNING NORMAL-RIGHTS SERVER TO END AND WAITS UNTIL IT IS GONE (UP TO
+# 10 SECONDS). 1 = ONE WAS RUNNING.
+*/
+static int
 	STOP_USER_SERVER(void)
 {
 	HANDLE	EVENT;
 	int		I;
 
-	EVENT = OpenEventW(EVENT_MODIFY_STATE, FALSE, SVC_USER_EVENT);
-	if (!EVENT)
+	for (I = 0; I < 100; ++I)
 	{
-		return ;
-	}
-	SetEvent(EVENT);
-	CloseHandle(EVENT);
-	for (I = 0; I < 50; ++I)
-	{
-		EVENT = OpenEventW(SYNCHRONIZE, FALSE, SVC_USER_EVENT);
+		EVENT = OpenEventW(EVENT_MODIFY_STATE, FALSE, SVC_USER_EVENT);
 		if (!EVENT)
 		{
 			break ;
 		}
+		SetEvent(EVENT); /* AGAIN EACH TIME: A NEW ONE MAY HAVE STARTED */
 		CloseHandle(EVENT);
 		Sleep(100);
 	}
-	Sleep(300); /* LET IT CLOSE ITS FILE */
+	if (I)
+	{
+		Sleep(300); /* LET IT CLOSE ITS FILE */
+	}
+	return (I != 0);
 }
 
 int
@@ -965,14 +966,20 @@ int
 	WCHAR	DIR[MAX_PATH];
 	WCHAR	TARGET[MAX_PATH];
 	HKEY	KEY;
+	int		FOUND;
 	int		I;
 
 	USER_COMMAND(COMMAND, MAX_PATH + 64);
-	if (!COMMAND[0])
+	FOUND = STOP_USER_SERVER() || COMMAND[0];
+	if (USER_DIR(DIR))
+	{
+		swprintf(TARGET, MAX_PATH, L"%ls\\INWAY.exe", DIR);
+		FOUND = FOUND || GetFileAttributesW(TARGET) != INVALID_FILE_ATTRIBUTES;
+	}
+	if (!FOUND)
 	{
 		return (0);
 	}
-	STOP_USER_SERVER();
 	if (RegOpenKeyExW(HKEY_CURRENT_USER, USER_RUN_KEY, 0, KEY_SET_VALUE,
 		&KEY) == ERROR_SUCCESS)
 	{
@@ -1043,7 +1050,10 @@ int
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                 SEEN FROM A NORMAL COPY                  |  \\//  */
 /*   \/   #==========================================================#   \/   */
-/* IS THE NORMAL-RIGHTS SERVER ON, AND WHAT IS ITS CODE? */
+/*
+# IS THE NORMAL-RIGHTS SERVER ON, AND WHAT IS ITS CODE? THE CODE IS READ ALSO
+# WHEN IT IS NOT RUNNING: -INSTALL WITHOUT -P KEEPS IT.
+*/
 static void
 	READ_USER_INFO(void)
 {
@@ -1051,19 +1061,18 @@ static void
 	WCHAR	*P;
 	HANDLE	EVENT;
 
-	EVENT = OpenEventW(SYNCHRONIZE, FALSE, SVC_USER_EVENT);
-	if (!EVENT)
-	{
-		return ;
-	}
-	CloseHandle(EVENT);
-	G_SVC_RUNNING = 2;
 	USER_COMMAND(COMMAND, MAX_PATH + 64);
 	P = wcsstr(COMMAND, L" -p ");
-	if (P && lstrlenW(P + 4) >= 6)
+	if (!G_SVC_CODE[0] && P && lstrlenW(P + 4) >= 6)
 	{
 		WideCharToMultiByte(CP_UTF8, 0, P + 4, 6, G_SVC_CODE, 7, NULL, NULL);
 		G_SVC_CODE[6] = '\0';
+	}
+	EVENT = OpenEventW(SYNCHRONIZE, FALSE, SVC_USER_EVENT);
+	if (EVENT)
+	{
+		CloseHandle(EVENT);
+		G_SVC_RUNNING = 2;
 	}
 }
 

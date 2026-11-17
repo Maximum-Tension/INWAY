@@ -110,6 +110,7 @@ Copied files go over right away, into a temp folder on the other PC, and are put
 | `INWAY.exe -c 2.253 948248`    | Connect to `2.253` with that code. INWAY closes when the session ends |
 | `INWAY.exe -c 2.253`           | Same, but they click Accept                                           |
 | `INWAY.exe -install -p 938572` | Share this PC all the time, also on the lock screen (servers)         |
+| `INWAY.exe -install`           | Same, with a random code (or the one the server already has)          |
 | `INWAY.exe -uninstall`         | Remove that again                                                     |
 | `INWAY.exe -removeold`         | Remove the old CONNECT tool from this PC                              |
 | `INWAY.exe -lang tr`           | Language: `en` or `tr` (normally it follows Windows)                  |
@@ -138,6 +139,8 @@ On a PC that stays on all the time, run this **once**:
 INWAY.exe -install -p 938572
 ```
 
+Without `-p`, it picks a random code and shows it in the green box when it is done. When the PC already has a server, `-install` without `-p` keeps that server's code, so running it again never changes the code by surprise.
+
 Windows asks for admin rights, and **the answer decides what kind of server it becomes**:
 
 | Answer  | Server                                                                                         |
@@ -156,7 +159,7 @@ With **No**, INWAY copies itself to `%LOCALAPPDATA%\INWAY` and starts from your 
 
 A server only lets people in with its code: nobody sits there to click Accept. After 5 wrong codes in a row it waits 30 seconds before it takes the next one.
 
-To change the code, run `-install` again with the new one. To take it out: `INWAY.exe -uninstall`. It only asks for admin rights when the full server is installed.
+To change the code, run `-install` again with the new one after `-p`. To take it out: `INWAY.exe -uninstall`. It only asks for admin rights when the full server is installed.
 
 **Servers update themselves.** The service asks GitHub for a new release every 6 hours. The first check comes 3 to 15 minutes after it starts, and the times are spread a little, so many servers behind one internet connection don't all ask at once. A new `INWAY.exe` is downloaded and checked against GitHub's SHA-256, then it **waits until nobody is connected**: it never drops a session. Then it stops the service, takes the place of the old EXE and starts the service again. The code, the port and the firewall rule stay the same. What happens is written to `C:\Program Files\INWAY\INWAY.log`.
 

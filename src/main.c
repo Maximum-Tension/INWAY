@@ -1078,6 +1078,19 @@ int
 		return (SERVICE_RUN_USER(O.CODE, O.NO_UPDATE));
 	}
 	CONSOLE_SETUP();
+	if (O.INSTALL && !O.CODE[0] && !ERRORS.LEN)
+	{
+		/* NO -P: KEEP THE CODE OF A SERVER THAT IS THERE, OR PICK ONE */
+		SERVICE_READ_INFO();
+		if (strlen(G_SVC_CODE) == 6)
+		{
+			snprintf(O.CODE, sizeof(O.CODE), "%s", G_SVC_CODE);
+		}
+		else
+		{
+			snprintf(O.CODE, sizeof(O.CODE), "%d", RANDOM_CODE());
+		}
+	}
 	if (O.INSTALL || O.UNINSTALL || O.REMOVE_OLD)
 	{
 		RESULT = ADMIN_JOB(&O, ERRORS.DATA ? ERRORS.DATA : "");
