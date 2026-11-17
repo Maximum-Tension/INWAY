@@ -20,6 +20,7 @@
 #include "inway.h"
 /******* """""""""
  * #define _WIN32_WINNT
+ * #define INWAY_PORT
  * #define WIN32_LEAN_AND_MEAN
  * struct S_MSG_HDR;
  */
@@ -32,6 +33,7 @@
  * typedef			SOCKET;
  * struct sockaddr;
  * struct sockaddr_in;
+ * typedef			u_short;
  * int				closesocket(SOCKET);
  * int				connect(SOCKET, const struct sockaddr *, int);
  * int				gethostname(char *, int);
@@ -39,6 +41,7 @@
  * u_short			htons(u_short);
  * unsigned long	inet_addr(const char *);
  * u_long			ntohl(u_long);
+ * u_short			ntohs(u_short);
  * int				recv(SOCKET, char *, int, int);
  * int				send(SOCKET, const char *, int, int);
  * SOCKET			socket(int, int, int);
@@ -56,10 +59,29 @@
  */
 #include <windows.h>
 /******* """""""""""
- * void	DeleteCriticalSection(LPCRITICAL_SECTION);
- * void	EnterCriticalSection(LPCRITICAL_SECTION);
- * void	InitializeCriticalSection(LPCRITICAL_SECTION);
- * void	LeaveCriticalSection(LPCRITICAL_SECTION);
+ * #define FALSE
+ * #define NO_ERROR
+ * #define WINAPI
+ * typedef	BOOL;
+ * typedef	DWORD;
+ * typedef	HMODULE;
+ * typedef	PDWORD;
+ * typedef	PVOID;
+ * typedef	ULONG;
+ * void		DeleteCriticalSection(LPCRITICAL_SECTION);
+ * void		EnterCriticalSection(LPCRITICAL_SECTION);
+ * BOOL		FreeLibrary(HMODULE);
+ * FARPROC	GetProcAddress(HMODULE, LPCSTR);
+ * void		InitializeCriticalSection(LPCRITICAL_SECTION);
+ * void		LeaveCriticalSection(LPCRITICAL_SECTION);
+ * HMODULE	LoadLibraryW(LPCWSTR);
+ */
+#include <iphlpapi.h>
+/******* """"""""""""
+ * #define MIB_TCP_STATE_ESTAB
+ * enum _TCP_TABLE_CLASS;
+ * typedef	MIB_TCPTABLE_OWNER_PID;
+ * typedef	TCP_TABLE_CLASS;
  */
 #include <stdio.h>
 /******* """""""""
@@ -67,6 +89,8 @@
  */
 #include <stdlib.h>
 /******* """"""""""
+ * void	free(void *);
+ * void	*malloc(size_t);
  * void	*realloc(void *, size_t);
  */
 #include <string.h>
@@ -437,3 +461,65 @@ int
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         MESSAGES                         |  //\\  */
 /* '""""' #==========================================================# '""""' */
+
+/* 1 WHILE SOMEONE IS CONNECTED TO THIS PC (A TCP SESSION ON INWAY_PORT) */
+int
+	SESSION_ACTIVE(void)
+{
+	typedef DWORD			(WINAPI *T_GET_TABLE)(
+		PVOID TABLE,
+		PDWORD SIZE,
+		BOOL SORT,
+		ULONG FAMILY,
+		TCP_TABLE_CLASS CLASS,
+		ULONG RESERVED
+	);
+	HMODULE					IPHLP;
+	T_GET_TABLE				GET_TABLE;
+	MIB_TCPTABLE_OWNER_PID	*TABLE;
+	DWORD					SIZE;
+	DWORD					I;
+	int						ACTIVE;
+
+	IPHLP = LoadLibraryW(L"iphlpapi.dll");
+	GET_TABLE = IPHLP ?
+		(T_GET_TABLE)(void *)GetProcAddress(IPHLP, "GetExtendedTcpTable") :
+		NULL;
+	if (!GET_TABLE)
+	{
+		if (IPHLP)
+		{
+			FreeLibrary(IPHLP);
+		}
+		return (1); /* CAN NOT TELL: BETTER WAIT */
+	}
+	ACTIVE = 0;
+	SIZE = 0;
+	GET_TABLE(NULL, &SIZE, FALSE, AF_INET, TCP_TABLE_OWNER_PID_CONNECTIONS, 0);
+	TABLE = SIZE ? (MIB_TCPTABLE_OWNER_PID *)malloc(SIZE) : NULL;
+	if (TABLE && GET_TABLE(
+		TABLE,
+		&SIZE,
+		FALSE,
+		AF_INET,
+		TCP_TABLE_OWNER_PID_CONNECTIONS,
+		0
+	) == NO_ERROR)
+	{
+		for (I = 0; I < TABLE->dwNumEntries; ++I)
+		{
+			if (TABLE->table[I].dwState == MIB_TCP_STATE_ESTAB &&
+				ntohs((u_short)TABLE->table[I].dwLocalPort) == INWAY_PORT)
+			{
+				ACTIVE = 1;
+			}
+		}
+	}
+	else
+	{
+		ACTIVE = 1;
+	}
+	free(TABLE);
+	FreeLibrary(IPHLP);
+	return (ACTIVE);
+}

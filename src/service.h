@@ -30,10 +30,19 @@
 # RESULT IS SHOWN IN THE NORMAL WINDOW INSTEAD.
 # "NO" ON THAT PROMPT DURING -INSTALL MAKES THE NORMAL-RIGHTS SERVER INSTEAD
 # (SERVICE_INSTALL_USER): IT STARTS WHEN THIS PERSON SIGNS IN, WITH NO WINDOW.
+# DURING A SESSION, SERVICE_NOTICE_START() SHOWS THE "IS CONTROLLING THIS PC"
+# BANNER AS THE PERSON SIGNED IN ("-NOTICE"), NEVER WITH SYSTEM RIGHTS.
 */
 
 #ifndef SERVICE_H
 #define SERVICE_H
+
+/* **************************** [v] INCLUDES [v] **************************** */
+#include <windows.h>
+/******* """""""""""
+ * typedef	HANDLE;
+ */
+/* **************************** [^] INCLUDES [^] **************************** */
 
 #define SVC_DONE 0
 #define SVC_NO_SCM 2 /* NO RIGHTS TO THE SERVICE LIST */
@@ -48,18 +57,20 @@
 extern int	G_SVC_RUNNING; /* 1 = THE SERVICE IS ON, 2 = THE NORMAL SERVER */
 extern char	G_SVC_CODE[8]; /* ITS CODE, "" WHEN UNKNOWN */
 
-extern int	SERVICE_RUN(const char *CODE, int NO_UPDATE);
-extern int	SERVICE_WORKER(void);
-extern void	SERVICE_READ_INFO(void);
-extern int	SERVICE_IS_ADMIN(void);
-extern int	SERVICE_RELAUNCH_AS_ADMIN(const char *PARAMETERS);
-extern int	SERVICE_INSTALL(const char *CODE, int NO_UPDATE);
-extern int	SERVICE_SWAP(void);
-extern int	SERVICE_UNINSTALL(void);
-extern int	SERVICE_REMOVE_OLD(void);
-extern int	SERVICE_EXISTS(void);
-extern int	SERVICE_INSTALL_USER(const char *CODE, int NO_UPDATE);
-extern int	SERVICE_UNINSTALL_USER(void);
-extern int	SERVICE_RUN_USER(const char *CODE, int NO_UPDATE);
+extern int		SERVICE_RUN(const char *CODE, int NO_UPDATE);
+extern int		SERVICE_WORKER(void);
+extern void		SERVICE_READ_INFO(void);
+extern int		SERVICE_IS_ADMIN(void);
+extern int		SERVICE_RELAUNCH_AS_ADMIN(const char *PARAMETERS);
+extern int		SERVICE_INSTALL(const char *CODE, int NO_UPDATE);
+extern int		SERVICE_SWAP(void);
+extern int		SERVICE_UNINSTALL(void);
+extern int		SERVICE_REMOVE_OLD(void);
+extern int		SERVICE_EXISTS(void);
+extern int		SERVICE_INSTALL_USER(const char *CODE, int NO_UPDATE);
+extern int		SERVICE_UNINSTALL_USER(void);
+extern int		SERVICE_RUN_USER(const char *CODE, int NO_UPDATE);
+extern HANDLE	SERVICE_NOTICE_START(const char *WHO);
+extern void		SERVICE_NOTICE_STOP(HANDLE PROCESS);
 
 #endif /* !SERVICE_H */

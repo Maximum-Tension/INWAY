@@ -40,5 +40,6 @@
 extern int	HTMLUI_ASK(SOCKET S, const char *WHO);
 extern void	HTMLUI_BANNER_SHOW(const char *WHO, SOCKET S);
 extern void	HTMLUI_BANNER_HIDE(void);
+extern int	HTMLUI_NOTICE(const char *WHO);
 
 #endif /* !HTMLUI_H */

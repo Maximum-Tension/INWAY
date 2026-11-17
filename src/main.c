@@ -159,6 +159,10 @@
  * int		PARSE_ADDRESS(const char *, uint32_t *);
  * uint32_t	PICK_LOCAL_IP(void);
  */
+#include "htmlui.h"
+/******* """"""""""
+ * int	HTMLUI_NOTICE(const char *);
+ */
 #include "host.h"
 /******* """"""""
  * int		G_CODE;
@@ -213,6 +217,7 @@ struct	S_OPTIONS
 	char	CODE[8]; /* -P */
 	char	LANGUAGE[8]; /* -LANG */
 	char	SERVE[48]; /* -SERVE PIPE: THE ADMIN COPY OF ONE SESSION */
+	char	NOTICE[24]; /* -NOTICE 2.253: THE FULL SERVER'S BANNER */
 	int		CONNECT;
 	int		INSTALL;
 	int		UNINSTALL;
@@ -408,6 +413,10 @@ static void
 		else if (IS_OPTION(ARGV[I], "serve") && I + 1 < ARGC)
 		{
 			snprintf(O->SERVE, sizeof(O->SERVE), "%s", ARGV[++I]);
+		}
+		else if (IS_OPTION(ARGV[I], "notice") && I + 1 < ARGC)
+		{
+			snprintf(O->NOTICE, sizeof(O->NOTICE), "%s", ARGV[++I]);
 		}
 		else if (IS_OPTION(ARGV[I], "background"))
 		{
@@ -1060,6 +1069,10 @@ int
 	if (O.SERVE[0])
 	{
 		return (HOST_TAKE_OVER(O.SERVE)); /* THE ADMIN COPY OF ONE SESSION */
+	}
+	if (O.NOTICE[0])
+	{
+		return (HTMLUI_NOTICE(O.NOTICE)); /* 1 = DISCONNECT WAS CLICKED */
 	}
 	if (O.BACKGROUND)
 	{

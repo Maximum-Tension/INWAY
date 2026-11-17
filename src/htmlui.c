@@ -172,11 +172,16 @@
  * enum E_STR;
  * const char	*LANG(enum E_STR);
  */
+#include "net.h"
+/******* """""""
+ * int	SESSION_ACTIVE(void);
+ */
 #include "htmlui.h"
 /******* """"""""""
  * int	HTMLUI_ASK(SOCKET, const char *);
  * void	HTMLUI_BANNER_HIDE(void);
  * void	HTMLUI_BANNER_SHOW(const char *, SOCKET);
+ * int	HTMLUI_NOTICE(const char *);
  */
 #include "host.h"
 /******* """"""""
@@ -637,6 +642,39 @@ void
 	free(G__BANNER__.ARGS);
 	memset(&G__BANNER__, 0, sizeof(G__BANNER__));
 	G__BANNER_SOCKET__ = INVALID_SOCKET;
+}
+
+/*
+# "INWAY.EXE -NOTICE 2.253": THE FULL SERVER STARTS THIS AS THE PERSON SIGNED
+# IN, TO SHOW THE SAME BANNER WITH THAT PERSON'S RIGHTS. THE SERVER CLOSES IT
+# WHEN THE SESSION ENDS; IT ALSO CLOSES ITSELF WHEN NOBODY IS CONNECTED ANY
+# MORE. 1 = DISCONNECT WAS CLICKED.
+*/
+int
+	HTMLUI_NOTICE(const char *WHO)
+{
+	int	STOPPED;
+	int	QUIET;
+
+	HTMLUI_BANNER_SHOW(WHO, INVALID_SOCKET);
+	if (!G__BANNER__.THREAD)
+	{
+		return (0);
+	}
+	QUIET = 0;
+	while (WaitForSingleObject(G__BANNER__.THREAD, 2000) == WAIT_TIMEOUT)
+	{
+		QUIET = SESSION_ACTIVE() ? 0 : QUIET + 1;
+		if (QUIET >= 2)
+		{
+			HTMLUI_BANNER_HIDE();
+			return (0);
+		}
+	}
+	STOPPED = !G__BANNER_CLOSING__ &&
+		lstrcmpW(G__BANNER__.RESULT, L"stop") == 0;
+	HTMLUI_BANNER_HIDE();
+	return (STOPPED);
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                      SESSION BANNER                      |  //\\  */

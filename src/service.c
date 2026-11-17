@@ -30,8 +30,10 @@
  */
 #include <windows.h>
 /******* """""""""""
+ * #define CALLBACK
  * #define CP_UTF8
  * #define CREATE_NO_WINDOW
+ * #define CREATE_UNICODE_ENVIRONMENT
  * #define ERROR_ALREADY_EXISTS
  * #define ERROR_CANCELLED
  * #define ERROR_FILE_NOT_FOUND
@@ -54,6 +56,7 @@
  * #define REG_SZ
  * #define SC_MANAGER_ALL_ACCESS
  * #define SC_MANAGER_CONNECT
+ * #define SE_PRIVILEGE_ENABLED
  * #define SERVICE_ACCEPT_SHUTDOWN
  * #define SERVICE_ACCEPT_STOP
  * #define SERVICE_ALL_ACCESS
@@ -74,12 +77,15 @@
  * #define SERVICE_WIN32_OWN_PROCESS
  * #define SW_HIDE
  * #define SYNCHRONIZE
+ * #define TOKEN_ADJUST_PRIVILEGES
  * #define TOKEN_ALL_ACCESS
  * #define TOKEN_QUERY
  * #define TRUE
  * #define VOID
  * #define WAIT_OBJECT_0
+ * #define WAIT_TIMEOUT
  * #define WINAPI
+ * #define WM_CLOSE
  * typedef					BOOL;
  * typedef					BYTE;
  * typedef					DWORD;
@@ -90,8 +96,11 @@
  * typedef					HANDLE;
  * typedef					HKEY;
  * typedef					HMODULE;
+ * typedef					HWND;
+ * typedef					LPARAM;
  * typedef					LPVOID;
  * typedef					LPWSTR;
+ * typedef					PHANDLE;
  * typedef					PROCESS_INFORMATION;
  * typedef					QUERY_SERVICE_CONFIGW;
  * typedef					SC_ACTION;
@@ -103,7 +112,17 @@
  * typedef					SERVICE_TABLE_ENTRYW;
  * typedef					STARTUPINFOW;
  * typedef					TOKEN_ELEVATION;
+ * typedef					TOKEN_PRIVILEGES;
+ * typedef					ULONG;
  * typedef					WCHAR;
+ * BOOL						AdjustTokenPrivileges(
+ * 	HANDLE,
+ * 	BOOL,
+ * 	PTOKEN_PRIVILEGES,
+ * 	DWORD,
+ * 	PTOKEN_PRIVILEGES,
+ * 	PDWORD
+ * );
  * BOOL						ChangeServiceConfig2W(SC_HANDLE, DWORD, LPVOID);
  * BOOL						ChangeServiceConfigW(
  * 	SC_HANDLE,
@@ -187,14 +206,17 @@
  * 	TOKEN_TYPE,
  * 	PHANDLE
  * );
+ * BOOL						EnumWindows(WNDENUMPROC, LPARAM);
  * BOOL						FreeLibrary(HMODULE);
  * HANDLE					GetCurrentProcess(void);
+ * DWORD					GetCurrentProcessId(void);
  * DWORD					GetEnvironmentVariableW(LPCWSTR, LPWSTR, DWORD);
  * BOOL						GetExitCodeProcess(HANDLE, LPDWORD);
  * DWORD					GetFileAttributesW(LPCWSTR);
  * DWORD					GetLastError(void);
  * DWORD					GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
  * FARPROC					GetProcAddress(HMODULE, LPCSTR);
+ * DWORD					GetProcessId(HANDLE);
  * BOOL						GetTokenInformation(
  * 	HANDLE,
  * 	TOKEN_INFORMATION_CLASS,
@@ -202,7 +224,9 @@
  * 	DWORD,
  * 	PDWORD
  * );
+ * DWORD					GetWindowThreadProcessId(HWND, LPDWORD);
  * HMODULE					LoadLibraryW(LPCWSTR);
+ * BOOL						LookupPrivilegeValueW(LPCWSTR, LPCWSTR, PLUID);
  * LPWSTR					lstrcatW(LPWSTR, LPCWSTR);
  * int						lstrcmpiW(LPCWSTR, LPCWSTR);
  * LPWSTR					lstrcpynW(LPWSTR, LPCWSTR, int);
@@ -213,6 +237,8 @@
  * BOOL						OpenProcessToken(HANDLE, DWORD, PHANDLE);
  * SC_HANDLE				OpenSCManagerW(LPCWSTR, LPCWSTR, DWORD);
  * SC_HANDLE				OpenServiceW(SC_HANDLE, LPCWSTR, DWORD);
+ * BOOL						PostMessageW(HWND, UINT, WPARAM, LPARAM);
+ * BOOL						ProcessIdToSessionId(DWORD, DWORD *);
  * BOOL						QueryServiceConfigW(
  * 	SC_HANDLE,
  * 	LPQUERY_SERVICE_CONFIGW,
@@ -315,6 +341,10 @@
  * wchar_t	*wcsrchr(const wchar_t *, wchar_t);
  * wchar_t	*wcsstr(const wchar_t *, const wchar_t *);
  */
+#include <stdint.h>
+/******* """"""""""
+ * typedef	uintptr_t;
+ */
 #include "version.h"
 /******* """""""""""
  * #define INWAY_VERSION_TEXT
@@ -328,6 +358,7 @@
 /******* """"""""
  * enum E_STR;
  * const char	*LANG(enum E_STR);
+ * const char	*LANG_NAME(void);
  */
 #include "console.h"
 /******* """""""""""
@@ -1045,6 +1076,219 @@ int
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                 THE NORMAL-RIGHTS SERVER                 |  //\\  */
+/* '""""' #==========================================================# '""""' */
+
+/* .,,,,. #==========================================================# .,,,,. */
+/*  \\//  |              THE BANNER OF THE FULL SERVER               |  \\//  */
+/*   \/   #==========================================================#   \/   */
+/*
+# THE FULL SERVER RUNS WITH SYSTEM RIGHTS. A WINDOW WITH THOSE RIGHTS ON THE
+# DESKTOP WOULD BE A WAY IN FOR ANYONE AT THE PC, SO THE "IS CONTROLLING THIS
+# PC" BANNER COMES FROM "INWAY.EXE -NOTICE", STARTED AS THE PERSON SIGNED IN.
+# NOBODY SIGNED IN (THE LOGIN SCREEN): NO BANNER, THERE IS NOBODY TO TELL.
+*/
+static void
+	ENABLE_PRIVILEGE(const WCHAR *NAME)
+{
+	TOKEN_PRIVILEGES	TP;
+	HANDLE				TOKEN;
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES,
+		&TOKEN))
+	{
+		return ;
+	}
+	TP.PrivilegeCount = 1;
+	TP.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	if (LookupPrivilegeValueW(NULL, NAME, &TP.Privileges[0].Luid))
+	{
+		AdjustTokenPrivileges(TOKEN, FALSE, &TP, sizeof(TP), NULL, NULL);
+	}
+	CloseHandle(TOKEN);
+}
+
+/* A NORMAL INWAY STARTS THE BANNER AS ITSELF */
+static HANDLE
+	NOTICE_AS_ME(const char *WHO)
+{
+	STARTUPINFOW		SI;
+	PROCESS_INFORMATION	PI;
+	WCHAR				EXE[MAX_PATH];
+	WCHAR				COMMAND[MAX_PATH + 64];
+
+	EXE_PATH(EXE);
+	swprintf(
+		COMMAND,
+		MAX_PATH + 64,
+		L"\"%ls\" -notice %hs -lang %hs",
+		EXE,
+		WHO,
+		LANG_NAME()
+	);
+	memset(&SI, 0, sizeof(SI));
+	SI.cb = sizeof(SI);
+	memset(&PI, 0, sizeof(PI));
+	if (!CreateProcessW(NULL, COMMAND, NULL, NULL, FALSE, CREATE_NO_WINDOW,
+		NULL, NULL, &SI, &PI))
+	{
+		return (NULL);
+	}
+	CloseHandle(PI.hThread);
+	return (PI.hProcess);
+}
+
+/*
+# THE PROCESS OF THE BANNER ("INWAY.EXE -NOTICE"), OR NULL. THE FULL SERVER
+# STARTS IT AS THE PERSON SIGNED IN (NULL WHEN NOBODY IS), ANY OTHER INWAY AS
+# ITSELF.
+*/
+HANDLE
+	SERVICE_NOTICE_START(const char *WHO)
+{
+	typedef BOOL		(WINAPI *T_USER_TOKEN)(ULONG SESSION, PHANDLE TOKEN);
+	typedef BOOL		(WINAPI *T_MAKE_ENV)(LPVOID *ENV, HANDLE T, BOOL I);
+	typedef BOOL		(WINAPI *T_FREE_ENV)(LPVOID ENV);
+	STARTUPINFOW		SI;
+	PROCESS_INFORMATION	PI;
+	HMODULE				WTS;
+	HMODULE				USERENV;
+	T_USER_TOKEN		USER_TOKEN;
+	T_MAKE_ENV			MAKE_ENV;
+	T_FREE_ENV			FREE_ENV;
+	HANDLE				TOKEN;
+	HANDLE				PROCESS;
+	LPVOID				ENV;
+	DWORD				SESSION;
+	WCHAR				EXE[MAX_PATH];
+	WCHAR				COMMAND[MAX_PATH + 64];
+
+	if (!G_WORKER)
+	{
+		return (NOTICE_AS_ME(WHO));
+	}
+	PROCESS = NULL;
+	WTS = LoadLibraryW(L"wtsapi32.dll");
+	USERENV = LoadLibraryW(L"userenv.dll");
+	USER_TOKEN = WTS ? (T_USER_TOKEN)(void *)GetProcAddress(
+		WTS,
+		"WTSQueryUserToken"
+	) : NULL;
+	MAKE_ENV = USERENV ? (T_MAKE_ENV)(void *)GetProcAddress(
+		USERENV,
+		"CreateEnvironmentBlock"
+	) : NULL;
+	FREE_ENV = USERENV ? (T_FREE_ENV)(void *)GetProcAddress(
+		USERENV,
+		"DestroyEnvironmentBlock"
+	) : NULL;
+	ENABLE_PRIVILEGE(L"SeTcbPrivilege");
+	ENABLE_PRIVILEGE(L"SeAssignPrimaryTokenPrivilege");
+	ENABLE_PRIVILEGE(L"SeIncreaseQuotaPrivilege");
+	TOKEN = NULL;
+	if (USER_TOKEN && ProcessIdToSessionId(GetCurrentProcessId(), &SESSION) &&
+		USER_TOKEN(SESSION, &TOKEN))
+	{
+		ENV = NULL;
+		if (MAKE_ENV && !MAKE_ENV(&ENV, TOKEN, FALSE))
+		{
+			ENV = NULL;
+		}
+		EXE_PATH(EXE);
+		swprintf(COMMAND, MAX_PATH + 64, L"\"%ls\" -notice %hs", EXE, WHO);
+		memset(&SI, 0, sizeof(SI));
+		SI.cb = sizeof(SI);
+		SI.lpDesktop = L"winsta0\\default";
+		memset(&PI, 0, sizeof(PI));
+		if (CreateProcessAsUserW(
+			TOKEN,
+			NULL,
+			COMMAND,
+			NULL,
+			NULL,
+			FALSE,
+			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
+			ENV,
+			NULL,
+			&SI,
+			&PI
+		))
+		{
+			CloseHandle(PI.hThread);
+			PROCESS = PI.hProcess;
+		}
+		if (ENV && FREE_ENV)
+		{
+			FREE_ENV(ENV);
+		}
+		CloseHandle(TOKEN);
+	}
+	if (WTS)
+	{
+		FreeLibrary(WTS);
+	}
+	if (USERENV)
+	{
+		FreeLibrary(USERENV);
+	}
+	return (PROCESS);
+}
+
+static BOOL CALLBACK
+	CLOSE_WINDOWS_OF(HWND WINDOW, LPARAM PID)
+{
+	DWORD	OWNER;
+
+	OWNER = 0;
+	GetWindowThreadProcessId(WINDOW, &OWNER);
+	if (OWNER == (DWORD)PID)
+	{
+		PostMessageW(WINDOW, WM_CLOSE, 0, 0);
+	}
+	return (TRUE);
+}
+
+/*
+# A NEW THREAD STARTS ON THE NORMAL DESKTOP, WHERE THE BANNER IS (THE SESSION
+# THREAD MAY HAVE FOLLOWED THE SCREEN TO THE LOCK SCREEN).
+*/
+static DWORD WINAPI
+	CLOSE_THREAD(LPVOID PARAMETER)
+{
+	EnumWindows(CLOSE_WINDOWS_OF, (LPARAM)(DWORD)(uintptr_t)PARAMETER);
+	return (0);
+}
+
+/* CLOSES THE BANNER OF SERVICE_NOTICE_START() AND FORGETS THE HANDLE */
+void
+	SERVICE_NOTICE_STOP(HANDLE PROCESS)
+{
+	HANDLE	T;
+
+	if (!PROCESS)
+	{
+		return ;
+	}
+	T = CreateThread(
+		NULL,
+		0,
+		CLOSE_THREAD,
+		(LPVOID)(uintptr_t)GetProcessId(PROCESS),
+		0,
+		NULL
+	);
+	if (T)
+	{
+		WaitForSingleObject(T, 2000);
+		CloseHandle(T);
+	}
+	if (WaitForSingleObject(PROCESS, 3000) == WAIT_TIMEOUT)
+	{
+		TerminateProcess(PROCESS, 0);
+	}
+	CloseHandle(PROCESS);
+}
+/*   /\   #==========================================================#   /\   */
+/*  //\\  |              THE BANNER OF THE FULL SERVER               |  //\\  */
 /* '""""' #==========================================================# '""""' */
 
 /* .,,,,. #==========================================================# .,,,,. */

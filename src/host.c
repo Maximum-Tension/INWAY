@@ -93,6 +93,7 @@
  * #define CURSOR_SHOWING
  * #define DI_NORMAL
  * #define DIB_RGB_COLORS
+ * #define DUPLICATE_SAME_ACCESS
  * #define ERROR_IO_PENDING
  * #define ERROR_PIPE_CONNECTED
  * #define EVENT_MODIFY_STATE
@@ -102,6 +103,7 @@
  * #define GENERIC_ALL
  * #define GENERIC_READ
  * #define GENERIC_WRITE
+ * #define IDC_ARROW
  * #define INFINITE
  * #define INPUT_KEYBOARD
  * #define INPUT_MOUSE
@@ -111,6 +113,7 @@
  * #define INVALID_HANDLE_VALUE
  * #define KEYEVENTF_EXTENDEDKEY
  * #define KEYEVENTF_KEYUP
+ * #define LoadCursor
  * #define MAX_PATH
  * #define MOUSEEVENTF_LEFTDOWN
  * #define MOUSEEVENTF_LEFTUP
@@ -140,6 +143,7 @@
  * typedef	DWORD;
  * typedef	HANDLE;
  * typedef	HBITMAP;
+ * typedef	HCURSOR;
  * typedef	HDC;
  * typedef	HDESK;
  * typedef	HGDIOBJ;
@@ -148,6 +152,7 @@
  * typedef	LONG;
  * typedef	LPVOID;
  * typedef	OVERLAPPED;
+ * typedef	POINT;
  * typedef	WCHAR;
  * typedef	WORD;
  * BOOL		BitBlt(HDC, int, int, int, int, HDC, int, int, DWORD);
@@ -195,12 +200,24 @@
  * BOOL		DeleteDC(HDC);
  * BOOL		DeleteObject(HGDIOBJ);
  * BOOL		DrawIconEx(HDC, int, int, HICON, int, int, UINT, HBRUSH, UINT);
+ * BOOL		DuplicateHandle(
+ * 	HANDLE,
+ * 	HANDLE,
+ * 	HANDLE,
+ * 	LPHANDLE,
+ * 	DWORD,
+ * 	BOOL,
+ * 	DWORD
+ * );
  * void		EnterCriticalSection(LPCRITICAL_SECTION);
  * BOOL		GdiFlush(void);
+ * HANDLE	GetCurrentProcess(void);
  * DWORD	GetCurrentProcessId(void);
  * DWORD	GetCurrentThreadId(void);
  * BOOL		GetCursorInfo(PCURSORINFO);
+ * BOOL		GetCursorPos(LPPOINT);
  * HDC		GetDC(HWND);
+ * BOOL		GetExitCodeProcess(HANDLE, LPDWORD);
  * BOOL		GetExitCodeThread(HANDLE, LPDWORD);
  * BOOL		GetIconInfo(HICON, PICONINFO);
  * DWORD	GetLastError(void);
@@ -348,8 +365,6 @@
 #include "htmlui.h"
 /******* """"""""""
  * int	HTMLUI_ASK(SOCKET, const char *);
- * void	HTMLUI_BANNER_HIDE(void);
- * void	HTMLUI_BANNER_SHOW(const char *, SOCKET);
  */
 #include "host.h"
 /******* """"""""
@@ -360,7 +375,9 @@
  */
 #include "service.h"
 /******* """""""""""
- * int	SERVICE_IS_ADMIN(void);
+ * int		SERVICE_IS_ADMIN(void);
+ * HANDLE	SERVICE_NOTICE_START(const char *);
+ * void		SERVICE_NOTICE_STOP(HANDLE);
  */
 #include "update.h"
 /******* """"""""""
@@ -597,22 +614,41 @@ static void
 {
 	CURSORINFO	CI;
 	ICONINFO	II;
+	HCURSOR		CURSOR;
+	POINT		AT;
 
 	memset(&CI, 0, sizeof(CI));
 	CI.cbSize = sizeof(CI);
-	if (!GetCursorInfo(&CI) || !(CI.flags & CURSOR_SHOWING))
+	CURSOR = NULL;
+	if (GetCursorInfo(&CI))
+	{
+		AT = CI.ptScreenPos;
+		if ((CI.flags & CURSOR_SHOWING) && CI.hCursor)
+		{
+			CURSOR = CI.hCursor;
+		}
+	}
+	else if (!GetCursorPos(&AT))
 	{
 		return ;
 	}
-	if (!GetIconInfo(CI.hCursor, &II))
+	/*
+	# WINDOWS HIDES THE POINTER WHEN IT THINKS NO MOUSE IS PLUGGED IN, OR AFTER
+	# A TOUCH. THE OTHER PC STILL HAS TO SEE WHERE IT IS: THEN DRAW AN ARROW.
+	*/
+	if (!CURSOR || !GetIconInfo(CURSOR, &II))
 	{
-		return ;
+		CURSOR = LoadCursor(NULL, IDC_ARROW);
+		if (!GetIconInfo(CURSOR, &II))
+		{
+			return ;
+		}
 	}
 	DrawIconEx(
 		MEMORY,
-		CI.ptScreenPos.x - (int)II.xHotspot,
-		CI.ptScreenPos.y - (int)II.yHotspot,
-		CI.hCursor,
+		AT.x - (int)II.xHotspot,
+		AT.y - (int)II.yHotspot,
+		CURSOR,
 		0,
 		0,
 		0,
@@ -1510,6 +1546,49 @@ int
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                      ONE CONNECTION                      |  \\//  */
 /*   \/   #==========================================================#   \/   */
+/* A SECOND HANDLE TO THE SAME PROCESS */
+static HANDLE
+	DUPLICATE(HANDLE H)
+{
+	HANDLE	COPY;
+
+	COPY = NULL;
+	DuplicateHandle(
+		GetCurrentProcess(),
+		H,
+		GetCurrentProcess(),
+		&COPY,
+		0,
+		FALSE,
+		DUPLICATE_SAME_ACCESS
+	);
+	return (COPY);
+}
+
+struct	S_NOTICE
+{
+	HANDLE			PROCESS; /* "INWAY.EXE -NOTICE", AS THE PERSON SIGNED IN */
+	SOCKET			S;
+	volatile LONG	ENDED; /* THE SESSION IS OVER: DISCONNECT MEANS NOTHING */
+};
+
+/* THE FULL SERVER'S BANNER CLOSED: WAS "DISCONNECT" CLICKED? */
+static DWORD WINAPI
+	NOTICE_THREAD(LPVOID PARAMETER)
+{
+	struct S_NOTICE	*N;
+	DWORD			CODE;
+
+	N = (struct S_NOTICE *)PARAMETER;
+	WaitForSingleObject(N->PROCESS, INFINITE);
+	if (!N->ENDED && GetExitCodeProcess(N->PROCESS, &CODE) && CODE == 1)
+	{
+		InterlockedExchange(&G_RUNNING, 0);
+		shutdown(N->S, SD_BOTH);
+	}
+	return (0);
+}
+
 static DWORD WINAPI
 	SERVER_UPDATE_THREAD(LPVOID PARAMETER)
 {
@@ -1588,6 +1667,8 @@ static DWORD WINAPI
 	int					ANSWER;
 	HANDLE				ADMIN;
 	SOCKET				LOCAL;
+	struct S_NOTICE		NOTICE;
+	HANDLE				NOTICE_WATCH;
 
 	S = (SOCKET)(uintptr_t)PARAMETER;
 	memset(&PEER, 0, sizeof(PEER));
@@ -1672,9 +1753,17 @@ static DWORD WINAPI
 	snprintf(G_HOST_STATUS, sizeof(G_HOST_STATUS), "%s", WHO);
 	LeaveCriticalSection(&G_CONSOLE_LOCK);
 	TELL("{y}", STR_N_CONTROLLING, WHO);
-	if (!G_WORKER)
+	/*
+	# "2.253 IS CONTROLLING THIS PC" COMES FROM ITS OWN SMALL PROCESS: WHEN
+	# THE WINDOW EVER HANGS, IT CAN STILL BE ENDED WITH THE SESSION.
+	*/
+	memset(&NOTICE, 0, sizeof(NOTICE));
+	NOTICE_WATCH = NULL;
+	NOTICE.PROCESS = SERVICE_NOTICE_START(WHO);
+	if (NOTICE.PROCESS)
 	{
-		HTMLUI_BANNER_SHOW(WHO, S); /* "2.253 IS CONTROLLING THIS PC" */
+		NOTICE.S = S;
+		NOTICE_WATCH = CreateThread(NULL, 0, NOTICE_THREAD, &NOTICE, 0, NULL);
 	}
 	if (ADMIN)
 	{
@@ -1690,9 +1779,21 @@ static DWORD WINAPI
 	{
 		SERVE(S, WHO);
 	}
-	if (!G_WORKER)
+	if (NOTICE.PROCESS)
 	{
-		HTMLUI_BANNER_HIDE();
+		InterlockedExchange(&NOTICE.ENDED, 1);
+		if (NOTICE_WATCH)
+		{
+			/* SERVICE_NOTICE_STOP() CLOSES THE HANDLE: KEEP OUR OWN COPY */
+			SERVICE_NOTICE_STOP(DUPLICATE(NOTICE.PROCESS));
+			WaitForSingleObject(NOTICE_WATCH, 5000);
+			CloseHandle(NOTICE_WATCH);
+		}
+		else
+		{
+			SERVICE_NOTICE_STOP(DUPLICATE(NOTICE.PROCESS));
+		}
+		CloseHandle(NOTICE.PROCESS);
 	}
 	closesocket(S);
 	EnterCriticalSection(&G_CONSOLE_LOCK);

@@ -22,7 +22,8 @@ Getting into a computer without permission is a crime in most countries. In Turk
 ## How INWAY stays visible
 
 * Without the code, the person at the PC has to click **Accept**.
-* While someone is connected, a window in the corner says who it is and has a **Disconnect** button. The full always-on server is the exception: only an administrator of that PC can install it, and it shows in the Windows service list as **INWAY Remote Desktop**.
+* While someone is connected, a window in the corner says who it is and has a **Disconnect** button. Every kind of INWAY shows it, also the always-on server. Only when nobody is signed in to the PC (the login screen) there is nobody to show it to.
+* Only an administrator of the PC can install the always-on server, and it shows in the Windows service list as **INWAY Remote Desktop**.
 * The code changes every time INWAY starts, unless someone sets it with `-p`.
 * It only works inside the local network, and only one person can be connected at a time.
 
@@ -44,6 +45,7 @@ The GPL lets anyone change INWAY and share it. Section 5 asks that a changed cop
 
 * **Ne için:** yardım isteyen ve bilgisayarın başında olan birine yardım etmek; kendi bilgisayarlarınız; sahibinin izniyle ve kullananların bilgisi dahilinde yönettiğiniz bilgisayarlar ve sunucular.
 * **Ne için değil:** bir bilgisayara izinsiz girmek, birinin ekranını haberi olmadan izlemek, INWAY'i, bildirim penceresini ya da hizmetini o kişiden gizlemek.
+* **Bildirim:** biri bağlıyken köşedeki küçük pencere kimin bağlı olduğunu söyler ve **Bağlantıyı Kes** düğmesi vardır. Her zaman açık sunucu dahil, INWAY'in her türü bunu gösterir.
 * **INWAY'i çalıştıran kişi hangi bilgisayara bağlanacağına kendisi karar verir ve bundan kendisi sorumludur.** Bir bilişim sistemine izinsiz girmek birçok ülkede suçtur; Türkiye'de Türk Ceza Kanunu'nun 243. maddesi ("Bilişim sistemine girme"). Kişisel verilerle ve çalışanların izlenmesiyle ilgili kurallar da, ekranlarını görmeden önce kişileri bilgilendirmenizi gerektirebilir.
 * **Garanti yok:** INWAY, GPL-3.0 lisansıyla "olduğu gibi", hiçbir garanti olmadan verilir (lisansın 15. ve 16. bölümleri).
 * **Değiştirilmiş kopyalar benim değildir** ve onlardan sorumlu değilim. Benim sürümlerim yalnızca [Releases sayfasındakiler][__RELEASES__], benim sertifikamla imzalı olanlardır.

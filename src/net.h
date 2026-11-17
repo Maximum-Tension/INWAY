@@ -78,5 +78,6 @@ extern int		RECV_MSG(
 	uint32_t *CAP,
 	uint32_t MAX
 );
+extern int		SESSION_ACTIVE(void);
 
 #endif /* !NET_H */

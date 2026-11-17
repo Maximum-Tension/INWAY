@@ -149,5 +149,6 @@ enum	E_STR
 
 extern void			LANG_INIT(const char *FORCE);
 extern const char	*LANG(enum E_STR ID);
+extern const char	*LANG_NAME(void);
 
 #endif /* !LANG_H */

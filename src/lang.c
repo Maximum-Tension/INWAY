@@ -431,3 +431,10 @@ const char
 	}
 	return (G__EN__[ID] ? G__EN__[ID] : "");
 }
+
+/* "EN" OR "TR": PASSED ON TO HELPERS WITH -LANG */
+const char
+	*LANG_NAME(void)
+{
+	return (G__LANG__ == G__TR__ ? "tr" : "en");
+}

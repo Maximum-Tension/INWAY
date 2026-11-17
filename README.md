@@ -155,6 +155,8 @@ With **Yes**, INWAY copies itself to `C:\Program Files\INWAY`, installs a Window
 * in "Do you want to allow this app?" popups,
 * and **`CTRL` + `ALT` + `DEL`** works from the menu.
 
+The person at that PC still sees the small "2.253 is controlling this PC" window with its **Disconnect** button. The service runs with system rights, so it doesn't show that window itself: it starts a small helper as the person signed in, with that person's normal rights. A window with system rights on someone's desktop would be a way into the whole PC.
+
 With **No**, INWAY copies itself to `%LOCALAPPDATA%\INWAY` and starts from your account's sign-in list, with no window. It can't use admin windows or the lock screen, and the first time Windows asks about the firewall like for any program. To make it the full server later, run the same `-install` again and click **Yes**: the full server replaces it.
 
 A server only lets people in with its code: nobody sits there to click Accept. After 5 wrong codes in a row it waits 30 seconds before it takes the next one.

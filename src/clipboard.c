@@ -215,6 +215,7 @@
 /******* """"""""""
  * #define NULL
  * typedef	size_t;
+ * int		_wcsnicmp(const wchar_t *, const wchar_t *, size_t);
  * void		*memcpy(void *, const void *, size_t);
  * void		*memset(void *, int, size_t);
  * wchar_t	*wcschr(const wchar_t *, wchar_t);
@@ -936,6 +937,29 @@ static WCHAR
 	return (LIST);
 }
 
+/*
+# 1 WHEN EVERY PATH IN LIST IS IN OUR OWN FOLDER: FILES THE OTHER PC SENT.
+# EXPLORER WRITES "PASTE DONE" INTO THE CLIPBOARD AFTER A PASTE, AND WITHOUT
+# THIS THE SAME FILES WOULD GO STRAIGHT BACK TO THE OTHER PC.
+*/
+static int
+	OUR_OWN_COPY(const struct S_CLIP *C, const WCHAR *LIST)
+{
+	const WCHAR	*P;
+	size_t		N;
+
+	N = (size_t)lstrlenW(C->BASE);
+	for (P = LIST; *P; P += lstrlenW(P) + 1)
+	{
+		if ((size_t)lstrlenW(P) <= N || _wcsnicmp(P, C->BASE, N) != 0 ||
+			P[N] != L'\\')
+		{
+			return (0);
+		}
+	}
+	return (P != LIST);
+}
+
 /* SOMETHING WAS COPIED ON THIS PC */
 static void
 	CLIPBOARD_CHANGED(struct S_CLIP *C)
@@ -996,6 +1020,11 @@ static void
 		}
 	}
 	CloseClipboard();
+	if (LIST && OUR_OWN_COPY(C, LIST))
+	{
+		free(LIST); /* PASTING IT TOUCHED THE CLIPBOARD: DO NOT SEND IT BACK */
+		return ;
+	}
 	if (FILES && !LIST)
 	{
 		LIST = OLE_FILE_LIST();

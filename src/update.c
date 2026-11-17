@@ -21,14 +21,7 @@
 #include "inway.h"
 /******* """""""""
  * #define _WIN32_WINNT
- * #define INWAY_PORT
  * #define WIN32_LEAN_AND_MEAN
- */
-#include <winsock2.h>
-/******* """"""""""""
- * #define AF_INET
- * typedef	u_short;
- * u_short	ntohs(u_short);
  */
 #include <windows.h>
 /******* """""""""""
@@ -51,27 +44,21 @@
  * #define MOVEFILE_COPY_ALLOWED
  * #define MOVEFILE_REPLACE_EXISTING
  * #define MOVEFILE_WRITE_THROUGH
- * #define NO_ERROR
  * #define OPEN_ALWAYS
  * #define OPEN_EXISTING
  * #define SYNCHRONIZE
  * #define WAIT_OBJECT_0
  * #define WAIT_TIMEOUT
  * #define WINAPI
- * typedef	BOOL;
  * typedef	DWORD;
  * typedef	HANDLE;
- * typedef	HMODULE;
  * typedef	LARGE_INTEGER;
  * typedef	LONG;
  * typedef	LPVOID;
- * typedef	PDWORD;
  * typedef	PROCESS_INFORMATION;
  * typedef	PUCHAR;
- * typedef	PVOID;
  * typedef	STARTUPINFOW;
  * typedef	SYSTEMTIME;
- * typedef	ULONG;
  * typedef	WCHAR;
  * typedef	WIN32_FIND_DATAW;
  * BOOL		CloseHandle(HANDLE);
@@ -102,7 +89,6 @@
  * BOOL		FindClose(HANDLE);
  * HANDLE	FindFirstFileW(LPCWSTR, LPWIN32_FIND_DATAW);
  * BOOL		FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
- * BOOL		FreeLibrary(HMODULE);
  * LPWSTR	GetCommandLineW(void);
  * DWORD	GetCurrentProcessId(void);
  * DWORD	GetEnvironmentVariableW(LPCWSTR, LPWSTR, DWORD);
@@ -111,10 +97,8 @@
  * DWORD	GetLastError(void);
  * void		GetLocalTime(LPSYSTEMTIME);
  * DWORD	GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
- * FARPROC	GetProcAddress(HMODULE, LPCSTR);
  * DWORD	GetTempPathW(DWORD, LPWSTR);
  * DWORD	GetTickCount(void);
- * HMODULE	LoadLibraryW(LPCWSTR);
  * LPWSTR	lstrcatW(LPWSTR, LPCWSTR);
  * int		lstrcmpiW(LPCWSTR, LPCWSTR);
  * LPWSTR	lstrcpynW(LPWSTR, LPCWSTR, int);
@@ -211,13 +195,6 @@
  * 	ULONG
  * );
  */
-#include <iphlpapi.h>
-/******* """"""""""""
- * #define MIB_TCP_STATE_ESTAB
- * enum _TCP_TABLE_CLASS;
- * typedef	MIB_TCPTABLE_OWNER_PID;
- * typedef	TCP_TABLE_CLASS;
- */
 #include <stdio.h>
 /******* """""""""
  * int	snprintf(char *, size_t, const char *, ...);
@@ -278,6 +255,10 @@
 /******* """""""""""
  * void	SAY(const char *);
  * void	SAYF(const char *, ...);
+ */
+#include "net.h"
+/******* """""""
+ * int	SESSION_ACTIVE(void);
  */
 #include "host.h"
 /******* """"""""
@@ -1199,68 +1180,6 @@ void
 	}
 	WriteFile(FILE_HANDLE, LINE, (DWORD)N, &DONE, NULL);
 	CloseHandle(FILE_HANDLE);
-}
-
-/* 1 WHILE SOMEONE IS CONNECTED TO THIS PC (A TCP SESSION ON INWAY_PORT) */
-static int
-	SESSION_ACTIVE(void)
-{
-	typedef DWORD			(WINAPI *T_GET_TABLE)(
-		PVOID TABLE,
-		PDWORD SIZE,
-		BOOL SORT,
-		ULONG FAMILY,
-		TCP_TABLE_CLASS CLASS,
-		ULONG RESERVED
-	);
-	HMODULE					IPHLP;
-	T_GET_TABLE				GET_TABLE;
-	MIB_TCPTABLE_OWNER_PID	*TABLE;
-	DWORD					SIZE;
-	DWORD					I;
-	int						ACTIVE;
-
-	IPHLP = LoadLibraryW(L"iphlpapi.dll");
-	GET_TABLE = IPHLP ?
-		(T_GET_TABLE)(void *)GetProcAddress(IPHLP, "GetExtendedTcpTable") :
-		NULL;
-	if (!GET_TABLE)
-	{
-		if (IPHLP)
-		{
-			FreeLibrary(IPHLP);
-		}
-		return (1); /* CAN NOT TELL: BETTER WAIT */
-	}
-	ACTIVE = 0;
-	SIZE = 0;
-	GET_TABLE(NULL, &SIZE, FALSE, AF_INET, TCP_TABLE_OWNER_PID_CONNECTIONS, 0);
-	TABLE = SIZE ? (MIB_TCPTABLE_OWNER_PID *)malloc(SIZE) : NULL;
-	if (TABLE && GET_TABLE(
-		TABLE,
-		&SIZE,
-		FALSE,
-		AF_INET,
-		TCP_TABLE_OWNER_PID_CONNECTIONS,
-		0
-	) == NO_ERROR)
-	{
-		for (I = 0; I < TABLE->dwNumEntries; ++I)
-		{
-			if (TABLE->table[I].dwState == MIB_TCP_STATE_ESTAB &&
-				ntohs((u_short)TABLE->table[I].dwLocalPort) == INWAY_PORT)
-			{
-				ACTIVE = 1;
-			}
-		}
-	}
-	else
-	{
-		ACTIVE = 1;
-	}
-	free(TABLE);
-	FreeLibrary(IPHLP);
-	return (ACTIVE);
 }
 
 /* A RANDOM NUMBER OF MILLISECONDS FROM 0 TO RANGE */
