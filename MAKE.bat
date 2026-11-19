@@ -8,10 +8,11 @@
 :: +.....................+.....................+ ;  :!:: :!:!1:!:!::1:::!!!:  ::
 :: : C - Maximum Tension : Create - 2026/11/17 : ;  ::!::!!1001010!:!11!!::   ::
 :: :---------------------:---------------------: ;  :!1!!11000000000011!!:    ::
-:: : License - GPL-3.0   : Update - 2026/11/17 : ;   ::::!!!1!!1!!!1!!!::     ::
+:: : License - GPL-3.0   : Update - 2026/11/18 : ;   ::::!!!1!!1!!!1!!!::     ::
 :: +.....................+.....................+ ;      ::::!::!:::!::::      ::
 ::...............................................;............................::
 
+@ECHO OFF
 SETLOCAL ENABLEDELAYEDEXPANSION
 CD /D "%~dp0"
 
@@ -30,6 +31,16 @@ IF ERRORLEVEL 1 (
 WHERE windres >NUL 2>NUL
 IF ERRORLEVEL 1 (
 	ECHO windres was not found. It comes with MinGW-w64, next to gcc.
+	EXIT /B 1
+)
+
+:: A 32-BIT GCC WOULD MAKE AN INWAY.EXE THAT UPDATES TO INWAY32.EXE
+SET MACHINE=
+FOR /F "delims=" %%M IN ('gcc -dumpmachine') DO SET MACHINE=%%M
+IF /I NOT "!MACHINE:~0,6!"=="x86_64" (
+	ECHO This gcc makes 32-bit programs ^(!MACHINE!^).
+	ECHO For INWAY32.exe use MAKE32.bat. For INWAY.exe put a 64-bit MinGW-w64
+	ECHO first in PATH.
 	EXIT /B 1
 )
 

@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -91,7 +91,6 @@
  * BOOL		FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
  * LPWSTR	GetCommandLineW(void);
  * DWORD	GetCurrentProcessId(void);
- * DWORD	GetEnvironmentVariableW(LPCWSTR, LPWSTR, DWORD);
  * DWORD	GetFileAttributesW(LPCWSTR);
  * BOOL		GetFileSizeEx(HANDLE, PLARGE_INTEGER);
  * DWORD	GetLastError(void);
@@ -99,7 +98,6 @@
  * DWORD	GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
  * DWORD	GetTempPathW(DWORD, LPWSTR);
  * DWORD	GetTickCount(void);
- * LPWSTR	lstrcatW(LPWSTR, LPCWSTR);
  * int		lstrcmpiW(LPCWSTR, LPCWSTR);
  * LPWSTR	lstrcpynW(LPWSTR, LPCWSTR, int);
  * LPWSTR	lstrcpyW(LPWSTR, LPCWSTR);
@@ -122,6 +120,8 @@
  * #define WINHTTP_ADDREQ_FLAG_ADD
  * #define WINHTTP_DEFAULT_ACCEPT_TYPES
  * #define WINHTTP_FLAG_SECURE
+ * #define WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2
+ * #define WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3
  * #define WINHTTP_HEADER_NAME_BY_INDEX
  * #define WINHTTP_NO_ADDITIONAL_HEADERS
  * #define WINHTTP_NO_HEADER_INDEX
@@ -129,6 +129,7 @@
  * #define WINHTTP_NO_PROXY_NAME
  * #define WINHTTP_NO_REFERER
  * #define WINHTTP_NO_REQUEST_DATA
+ * #define WINHTTP_OPTION_SECURE_PROTOCOLS
  * #define WINHTTP_QUERY_FLAG_NUMBER
  * #define WINHTTP_QUERY_STATUS_CODE
  * typedef		HINTERNET;
@@ -166,6 +167,7 @@
  * 	DWORD,
  * 	DWORD_PTR
  * );
+ * BOOL			WinHttpSetOption(HINTERNET, DWORD, LPVOID, DWORD);
  * BOOL			WinHttpSetTimeouts(HINTERNET, int, int, int, int);
  */
 #include <bcrypt.h>
@@ -264,6 +266,10 @@
 /******* """"""""
  * int	G_WORKER;
  */
+#include "service.h"
+/******* """""""""""
+ * void	SERVICE_DIR(WCHAR *);
+ */
 #include "update.h"
 /******* """"""""""
  * #define UPDATE_ASSET
@@ -277,9 +283,47 @@ static volatile LONG	G__LAST_LOOK__ = 0; /* TICK OF THE LAST UPDATE_DUE() */
 
 #define HTTP_AGENT L"INWAY/" L"" INWAY_VERSION_TEXT
 
+#ifndef WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2
+#define WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 0X00000800 /* OLD MINGW HEADERS */
+#endif /* !WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 */
+
+#ifndef WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3
+#define WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3 0X00002000 /* OLD MINGW HEADERS */
+#endif /* !WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3 */
+
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |                           HTTP                           |  \\//  */
 /*   \/   #==========================================================#   \/   */
+/*
+# GITHUB ONLY TALKS TLS 1.2 AND NEWER. WINDOWS 7 GIVES WINHTTP ONLY TLS 1.0
+# UNLESS THE PROGRAM ASKS FOR MORE, AND EVEN THEN ONLY WITH UPDATE KB3140245.
+# WINDOWS 10 AND 11 ALREADY USE TLS 1.2 AND 1.3; ASKING CHANGES NOTHING THERE.
+# AN OLDER WINDOWS THAT DOES NOT KNOW TLS 1.3 REFUSES THE FIRST ASK.
+*/
+static void
+	ASK_FOR_TLS12(HINTERNET SESSION)
+{
+	DWORD	PROTOCOLS;
+
+	PROTOCOLS = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 |
+		WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3;
+	if (!WinHttpSetOption(
+		SESSION,
+		WINHTTP_OPTION_SECURE_PROTOCOLS,
+		&PROTOCOLS,
+		sizeof(PROTOCOLS)
+	))
+	{
+		PROTOCOLS = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2;
+		WinHttpSetOption(
+			SESSION,
+			WINHTTP_OPTION_SECURE_PROTOCOLS,
+			&PROTOCOLS,
+			sizeof(PROTOCOLS)
+		);
+	}
+}
+
 /*
 # GET URL. THE BODY GOES INTO BODY OR, WHEN FILE IS GIVEN, INTO THAT FILE.
 # REDIRECTS ARE FOLLOWED (A RELEASE DOWNLOAD MOVES TO ANOTHER SERVER).
@@ -329,6 +373,7 @@ static DWORD
 	{
 		return (0);
 	}
+	ASK_FOR_TLS12(SESSION);
 	WinHttpSetTimeouts(SESSION, 3000, 3000, 4000, TIMEOUT);
 	CONNECT = WinHttpConnect(SESSION, HOST, PARTS.nPort, 0);
 	REQUEST = CONNECT ? WinHttpOpenRequest(
@@ -677,8 +722,8 @@ static int
 
 /*
 # THE COPY IN "C:\PROGRAM FILES\INWAY" BELONGS TO THE BACKGROUND SERVICE,
-# WHICH KEEPS IT OPEN. NOW THAT INWAY RUNS AS ADMIN IT COULD WRITE THERE, BUT
-# THE SWAP WOULD FAIL ON EVERY START, SO THAT COPY IS LEFT TO -INSTALL.
+# WHICH KEEPS IT OPEN. AN ADMIN COPY OF INWAY COULD WRITE THERE, BUT THE SWAP
+# WOULD FAIL ON EVERY START, SO THAT COPY IS LEFT TO -INSTALL.
 */
 static int
 	IS_SERVICE_COPY(const WCHAR *EXE)
@@ -687,11 +732,7 @@ static int
 	WCHAR	MINE[MAX_PATH];
 	WCHAR	*SLASH;
 
-	if (!GetEnvironmentVariableW(L"ProgramFiles", DIR, MAX_PATH - 8))
-	{
-		return (0);
-	}
-	lstrcatW(DIR, L"\\INWAY");
+	SERVICE_DIR(DIR);
 	lstrcpynW(MINE, EXE, MAX_PATH);
 	SLASH = wcsrchr(MINE, L'\\');
 	if (!SLASH)

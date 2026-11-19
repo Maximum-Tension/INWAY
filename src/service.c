@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -433,17 +433,29 @@ static void
 	GetModuleFileNameW(NULL, OUTPUT, MAX_PATH);
 }
 
-/* "C:\PROGRAM FILES\<FOLDER>" */
+/*
+# "C:\PROGRAM FILES\<FOLDER>". ON 64-BIT WINDOWS THE 32-BIT BUILD FINDS
+# "C:\PROGRAM FILES (X86)" IN %PROGRAMFILES%, SO %PROGRAMW6432% IS READ FIRST:
+# BOTH BUILDS USE ONE FOLDER AND EACH CAN REPLACE OR REMOVE THE OTHER.
+*/
 static void
 	INSTALL_DIR(const WCHAR *FOLDER, WCHAR *OUTPUT)
 {
 	WCHAR	PF[MAX_PATH];
 
-	if (!GetEnvironmentVariableW(L"ProgramFiles", PF, MAX_PATH))
+	if (!GetEnvironmentVariableW(L"ProgramW6432", PF, MAX_PATH) &&
+		!GetEnvironmentVariableW(L"ProgramFiles", PF, MAX_PATH))
 	{
 		lstrcpyW(PF, L"C:\\Program Files");
 	}
 	swprintf(OUTPUT, MAX_PATH, L"%ls\\%ls", PF, FOLDER);
+}
+
+/* WHERE THE SERVICE LIVES: "C:\PROGRAM FILES\INWAY" */
+void
+	SERVICE_DIR(WCHAR *OUTPUT)
+{
+	INSTALL_DIR(SVC_FOLDER, OUTPUT);
 }
 
 /* RUNS A COMMAND WITHOUT A WINDOW AND WAITS FOR IT */

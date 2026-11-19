@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -32,18 +32,29 @@
  * #define ENABLE_VIRTUAL_TERMINAL_PROCESSING
  * #define STD_INPUT_HANDLE
  * #define STD_OUTPUT_HANDLE
+ * typedef	CONSOLE_SCREEN_BUFFER_INFO;
+ * typedef	COORD;
  * typedef	CRITICAL_SECTION;
  * typedef	DWORD;
  * typedef	HANDLE;
+ * typedef	WCHAR;
+ * typedef	WORD;
  * void		EnterCriticalSection(LPCRITICAL_SECTION);
  * void		ExitProcess(UINT);
+ * BOOL		FillConsoleOutputAttribute(HANDLE, WORD, DWORD, COORD, LPDWORD);
+ * BOOL		FillConsoleOutputCharacterW(HANDLE, WCHAR, DWORD, COORD, LPDWORD);
  * BOOL		GetConsoleMode(HANDLE, LPDWORD);
+ * BOOL		GetConsoleScreenBufferInfo(HANDLE, PCONSOLE_SCREEN_BUFFER_INFO);
  * HANDLE	GetStdHandle(DWORD);
  * void		InitializeCriticalSection(LPCRITICAL_SECTION);
  * void		LeaveCriticalSection(LPCRITICAL_SECTION);
+ * int		MultiByteToWideChar(UINT, DWORD, LPCCH, int, LPWSTR, int);
+ * BOOL		SetConsoleCursorPosition(HANDLE, COORD);
  * BOOL		SetConsoleMode(HANDLE, DWORD);
  * BOOL		SetConsoleOutputCP(UINT);
+ * BOOL		SetConsoleTextAttribute(HANDLE, WORD);
  * BOOL		SetConsoleTitleW(LPCWSTR);
+ * BOOL		WriteConsoleW(HANDLE, const void *, DWORD, LPDWORD, LPVOID);
  * BOOL		WriteFile(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
  */
 #include <stdio.h>
@@ -54,6 +65,11 @@
  * char		*fgets(char *, int, FILE *);
  * size_t	fwrite(const void *, size_t, size_t, FILE *);
  * int		snprintf(char *, size_t, const char *, ...);
+ */
+#include <stdlib.h>
+/******* """"""""""
+ * void	free(void *);
+ * void	*malloc(size_t);
  */
 #include <string.h>
 /******* """"""""""
@@ -91,6 +107,8 @@
 
 /* **************************** [v] GLOBALS [v] ***************************** */
 int					G_VT = 0;
+static int			G__OLD_CONSOLE__ = 0; /* A WINDOW, BUT NO VT: WINDOWS 7 */
+static WORD			G__PLAIN__ = 0X07; /* THE WINDOW'S OWN COLOURS */
 CRITICAL_SECTION	G_CONSOLE_LOCK;
 char				G_HOST_STATUS[64];
 static char			G__PROMPT__[512]; /* QUESTION WAITING FOR AN ANSWER */
@@ -104,22 +122,42 @@ void
 	G__PROMPT__[0] = '\0';
 }
 
+/*
+# WINDOWS 10 AND 11 UNDERSTAND COLOUR CODES (VT). WINDOWS 7 DOES NOT: THERE
+# THE TEXT GOES OUT AS UTF-16 AND THE COLOURS ARE SET ON THE WINDOW, SO THE
+# CODE PAGE IS LEFT ALONE (ITS OLD PIXEL FONT CAN NOT SHOW UTF-8).
+*/
 void
 	CONSOLE_SETUP(void)
 {
-	HANDLE	OUTPUT;
-	HANDLE	IN_HANDLE;
-	DWORD	MODE;
+	HANDLE						OUTPUT;
+	HANDLE						IN_HANDLE;
+	DWORD						MODE;
+	CONSOLE_SCREEN_BUFFER_INFO	INFO;
 
 	OUTPUT = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (GetConsoleMode(OUTPUT, &MODE) && SetConsoleMode(
-		OUTPUT,
-		MODE | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-	))
+	if (GetConsoleMode(OUTPUT, &MODE))
 	{
-		G_VT = 1;
+		if (SetConsoleMode(
+			OUTPUT,
+			MODE | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING
+		))
+		{
+			G_VT = 1;
+		}
+		else
+		{
+			G__OLD_CONSOLE__ = 1;
+			if (GetConsoleScreenBufferInfo(OUTPUT, &INFO))
+			{
+				G__PLAIN__ = INFO.wAttributes;
+			}
+		}
 	}
-	SetConsoleOutputCP(CP_UTF8); /* TURKISH LETTERS */
+	if (!G__OLD_CONSOLE__)
+	{
+		SetConsoleOutputCP(CP_UTF8); /* TURKISH LETTERS */
+	}
 	/* A STRAY CLICK MUST NOT FREEZE THE WINDOW IN "SELECT" MODE */
 	IN_HANDLE = GetStdHandle(STD_INPUT_HANDLE);
 	if (GetConsoleMode(IN_HANDLE, &MODE))
@@ -151,6 +189,27 @@ static const char
 		case ('0'): return ("\x1B[0m");
 	}
 	return (NULL);
+}
+
+/* THE SAME COLOURS FOR WINDOWS 7, AS CONSOLE TEXT ATTRIBUTES */
+static WORD
+	COLOUR_ATTRIBUTE(char KEY)
+{
+	WORD	BACK;
+
+	BACK = G__PLAIN__ & 0XF0;
+	switch (KEY)
+	{
+		case ('c'): return (BACK | 0X0B); /* BRIGHT CYAN */
+		case ('y'): return (BACK | 0X0E); /* BRIGHT YELLOW */
+		case ('Y'): return (BACK | 0X06); /* YELLOW */
+		case ('g'): return (BACK | 0X0A); /* BRIGHT GREEN */
+		case ('G'): return (BACK | 0X02); /* GREEN */
+		case ('r'): return (BACK | 0X0C); /* BRIGHT RED */
+		case ('w'): return (BACK | 0X0F); /* BRIGHT WHITE */
+		case ('d'): return (BACK | 0X08); /* GREY */
+	}
+	return (G__PLAIN__);
 }
 
 /* 1 IF P POINTS AT A COLOUR MARK LIKE "{y}" */
@@ -234,11 +293,91 @@ static void
 	}
 }
 
+/* UTF-8 TEXT TO THE WINDOW AS UTF-16 */
+static void
+	WRITE_WIDE(HANDLE OUTPUT, const char *DATA, size_t SIZE)
+{
+	WCHAR	*WIDE;
+	int		COUNT;
+	DWORD	DONE;
+
+	if (!SIZE)
+	{
+		return ;
+	}
+	COUNT = MultiByteToWideChar(CP_UTF8, 0, DATA, (int)SIZE, NULL, 0);
+	WIDE = COUNT > 0 ? (WCHAR *)malloc((size_t)COUNT * sizeof(WCHAR)) : NULL;
+	if (WIDE && MultiByteToWideChar(CP_UTF8, 0, DATA, (int)SIZE, WIDE, COUNT))
+	{
+		WriteConsoleW(OUTPUT, WIDE, (DWORD)COUNT, &DONE, NULL);
+	}
+	free(WIDE);
+}
+
+static void
+	CLEAR_OLD_CONSOLE(HANDLE OUTPUT)
+{
+	CONSOLE_SCREEN_BUFFER_INFO	INFO;
+	COORD						HOME;
+	DWORD						CELLS;
+	DWORD						DONE;
+
+	if (!GetConsoleScreenBufferInfo(OUTPUT, &INFO))
+	{
+		return ;
+	}
+	HOME.X = 0;
+	HOME.Y = 0;
+	CELLS = (DWORD)INFO.dwSize.X * (DWORD)INFO.dwSize.Y;
+	FillConsoleOutputCharacterW(OUTPUT, L' ', CELLS, HOME, &DONE);
+	FillConsoleOutputAttribute(OUTPUT, G__PLAIN__, CELLS, HOME, &DONE);
+	SetConsoleCursorPosition(OUTPUT, HOME);
+}
+
+/* WINDOWS 7: A COLOUR MARK SETS THE TEXT COLOUR, "\f" CLEARS THE WINDOW */
+static void
+	WRITE_OLD_CONSOLE(const char *MARKUP)
+{
+	HANDLE		OUTPUT;
+	const char	*P;
+	const char	*START;
+
+	OUTPUT = GetStdHandle(STD_OUTPUT_HANDLE);
+	P = MARKUP;
+	START = P;
+	while (*P)
+	{
+		if (*P == '\f' || IS_MARK(P))
+		{
+			WRITE_WIDE(OUTPUT, START, (size_t)(P - START));
+			if (*P == '\f')
+			{
+				CLEAR_OLD_CONSOLE(OUTPUT);
+				P += 1;
+			}
+			else
+			{
+				SetConsoleTextAttribute(OUTPUT, COLOUR_ATTRIBUTE(P[1]));
+				P += 3;
+			}
+			START = P;
+			continue ;
+		}
+		++P;
+	}
+	WRITE_WIDE(OUTPUT, START, (size_t)(P - START));
+}
+
 static void
 	WRITE_MARKUP(const char *MARKUP)
 {
 	struct S_TEXT	T = {0};
 
+	if (G__OLD_CONSOLE__)
+	{
+		WRITE_OLD_CONSOLE(MARKUP);
+		return ;
+	}
 	RENDER(&T, MARKUP, G_VT);
 	if (T.DATA)
 	{
@@ -280,7 +419,15 @@ const char
 const char
 	*CLEAR_SCREEN(void)
 {
-	return (G_VT ? "\x1B[2J\x1B[3J\x1B[H" : "\n\n");
+	if (G_VT)
+	{
+		return ("\x1B[2J\x1B[3J\x1B[H");
+	}
+	if (G__OLD_CONSOLE__)
+	{
+		return ("\f"); /* WRITE_OLD_CONSOLE CLEARS THE WINDOW */
+	}
+	return ("\n\n");
 }
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         WRITING                          |  //\\  */

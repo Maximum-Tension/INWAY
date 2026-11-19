@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -41,6 +41,7 @@
 #include <windows.h>
 /******* """""""""""
  * typedef	HANDLE;
+ * typedef	WCHAR;
  */
 /* **************************** [^] INCLUDES [^] **************************** */
 
@@ -72,5 +73,6 @@ extern int		SERVICE_UNINSTALL_USER(void);
 extern int		SERVICE_RUN_USER(const char *CODE, int NO_UPDATE);
 extern HANDLE	SERVICE_NOTICE_START(const char *WHO);
 extern void		SERVICE_NOTICE_STOP(HANDLE PROCESS);
+extern void		SERVICE_DIR(WCHAR *OUTPUT);
 
 #endif /* !SERVICE_H */

@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -54,7 +54,13 @@
 /* **************************** [^] INCLUDES [^] **************************** */
 
 #define UPDATE_REPO L"Maximum-Tension/INWAY"
+
+#ifdef _WIN64
 #define UPDATE_ASSET "INWAY.exe"
+#else /* !_WIN64 */
+#define UPDATE_ASSET "INWAY32.exe" /* THE 32-BIT BUILD STAYS 32-BIT */
+#endif /* _WIN64 */
+
 #define UPDATE_NOW_EVENT L"Global\\INWAY_UPDATE_NOW" /* HELPER > SERVICE */
 
 extern int	G_AUTO_UPDATE; /* THE NORMAL-RIGHTS SERVER UPDATES ITSELF */

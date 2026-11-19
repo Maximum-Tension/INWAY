@@ -5,6 +5,7 @@
 I made INWAY for the people around me who never used a PC in their lives. When they need help, they should not have to read a 9 digit ID over the phone or click through ten windows. They open INWAY, read two short things from a box (`2.147` and `942 853`), and that's it. The tools everyone knows send everything through the internet. Inside one building there is no reason to: a LAN is faster, and nothing leaves it.
 
 * **One EXE, both sides.** The same `INWAY.exe` shares this PC and controls other PCs. Copy it and run it.
+* **Windows 7 to 11, 64-bit and 32-bit.** `INWAY.exe` for 64-bit Windows, `INWAY32.exe` for 32-bit Windows. They connect to each other.
 * **Made for people who never used a PC.** The address is only the last two numbers (`2.253`), the code is split in two (`942 853`), every screen is a coloured box, and it speaks English and Turkish.
 * **Local network only.** No account, no server, no internet needed. The firewall rule I add only lets in PCs from the same network.
 * **Works where others stop.** Installed as a service, it works on the lock screen, the login screen, in Task Manager and in "Do you want to allow this app?" popups, and it can send **`CTRL` + `ALT` + `DEL`**.
@@ -19,6 +20,7 @@ I made INWAY for the people around me who never used a PC in their lives. When t
   <summary><strong>Table of Contents</strong></summary>
 
 - [Download](#download)
+  - [Which EXE?](#which-exe)
 - [How to use](#how-to-use)
   - [Share this PC](#share-this-pc)
   - [Connect to another PC](#connect-to-another-pc)
@@ -30,6 +32,7 @@ I made INWAY for the people around me who never used a PC in their lives. When t
 - [Updates](#updates)
   - [Making a release](#making-a-release)
 - [How to compile](#how-to-compile)
+  - [32-bit](#32-bit)
   - [Files](#files)
 - [Languages](#languages)
 - [How it works](#how-it-works)
@@ -48,6 +51,20 @@ I made INWAY for the people around me who never used a PC in their lives. When t
 > **[Latest release][__RELEASES__]**
 
 Put the same `INWAY.exe` on both PCs and open it. It needs no admin rights to open. The first time, Windows asks if INWAY may use the network: click **Allow access**.
+
+## Which EXE?
+
+| Windows                     | EXE           |
+| --------------------------- | ------------- |
+| 64-bit Windows 7, 8, 10, 11 | `INWAY.exe`   |
+| 32-bit Windows 7, 8, 10     | `INWAY32.exe` |
+
+Not sure? Look at **System type** in **Settings > System > About** (Windows 7: **Control Panel > System**). The two EXEs work together: a 32-bit PC can control a 64-bit PC and the other way around. Each one updates itself to its own kind, and both install the server into the same `C:\Program Files\INWAY`, so `-install` with one replaces the other.
+
+**On Windows 7** INWAY works the same, with two small differences:
+
+* The black window has its colours, but the boxes are drawn with `+`, `-` and `|`, because the old console can't show box lines.
+* The update check needs TLS 1.2, which Windows 7 only has after update **KB3140245**. Without it, INWAY works normally but can't update itself: download the new EXE by hand.
 
 ---
 
@@ -196,7 +213,7 @@ INWAY uses its own port (`50506`), service name and folder, so it can run next t
 
 # Updates
 
-Every time INWAY starts, it asks GitHub for the latest release and reads the **SHA-256** GitHub gives for its `INWAY.exe` (the `digest` you see under every release file). Then it hashes **its own EXE**. **Different hash = update.** So two releases on the same day (`20.26.11.17-Mk1145`, then `20.26.11.17-Mk1151`) work too.
+Every time INWAY starts, it asks GitHub for the latest release and reads the **SHA-256** GitHub gives for its `INWAY.exe` (the `digest` you see under every release file; the 32-bit one reads `INWAY32.exe`). Then it hashes **its own EXE**. **Different hash = update.** So two releases on the same day (`20.26.11.17-Mk1145`, then `20.26.11.17-Mk1151`) work too.
 
 Two rules keep it safe:
 
@@ -205,7 +222,7 @@ Two rules keep it safe:
 
 When an update is due:
 
-1. It downloads `INWAY.exe` of that release into `%TMP%` and checks its SHA-256 against the same `digest` again. Wrong or missing: no update.
+1. It downloads `INWAY.exe` (or `INWAY32.exe`) of that release into `%TMP%` and checks its SHA-256 against the same `digest` again. Wrong or missing: no update.
 2. It starts the new EXE and leaves it a small note in `%TMP%` that says where the old EXE is. The old one closes.
 3. The new one reads the note, puts itself in the old one's place, deletes the note and goes on with the same command line.
 
@@ -216,8 +233,8 @@ The copy in `C:\Program Files\INWAY` belongs to the background service, and the 
 ## Making a release
 
 1. Set the new version in [`src/version.h`](src/version.h). It is the date: `YY.YY.MM.DD`, so 2026/11/17 is `20.26.11.17`.
-2. Build with `MAKE.bat`.
-3. Make a GitHub release. The tag **starts with the date**, anything after it is yours: **`20.26.11.17-Mk1151`**. Attach **`INWAY.exe`** with exactly that name.
+2. Build with `MAKE.bat` and `MAKE32.bat`.
+3. Make a GitHub release. The tag **starts with the date**, anything after it is yours: **`20.26.11.17-Mk1151`**. Attach **`INWAY.exe`** and **`INWAY32.exe`** with exactly those names. A release without `INWAY32.exe` is fine too: the 32-bit copies just stay as they are.
 
 That's all. GitHub makes the SHA-256 by itself, so there is no `.sha256` file to upload.
 
@@ -242,6 +259,22 @@ windres --codepage=65001 -I src -I res -i res\inway.rc -O coff -o inway.res.o
 gcc -std=c99 -O2 -Isrc src\*.c inway.res.o -o INWAY.exe -static -s -lws2_32 -lgdi32 -luser32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lurlmon -lwinhttp -lbcrypt -lwindowscodecs
 ```
 
+`MAKE.bat` stops when its `gcc` makes 32-bit programs, so a 32-bit `INWAY.exe` can never end up in a release by mistake.
+
+## 32-bit
+
+`MAKE32.bat` builds `INWAY32.exe`. It needs a **32-bit MinGW-w64**. The easy way: download the **Win32 (i686)** MSVCRT zip from [WinLibs][__WINLIBS__] and unpack it to `C:\`, so `C:\mingw32\bin\gcc.exe` exists. Nothing to add to `PATH`. MSYS2's MINGW32 (`pacman -S mingw-w64-i686-gcc`) works too. `MAKE32.bat` looks for `i686-w64-mingw32-gcc` or a 32-bit `gcc` in `PATH`, then `C:\mingw32\bin`, then `C:\msys64\mingw32\bin`, so the 64-bit one can stay in `PATH`.
+
+> **Visual Studio can't do it.** The compiler of Visual Studio 2026 no longer makes programs for Windows 7, and Visual C++ 6 is far too old for the Windows parts INWAY uses (WinHTTP, BCrypt, WIC).
+
+```bat
+MAKE32.bat
+```
+
+`INWAY32.exe` appears next to it, the build files go to `build32`. `MAKE32.bat clean` removes them.
+
+> **For Windows 7, take an MSVCRT build, not UCRT.** A UCRT build only starts on Windows 7 after an extra Windows update.
+
 ## Files
 
 | File                                 | What it is                                                               |
@@ -263,6 +296,8 @@ gcc -std=c99 -O2 -Isrc src\*.c inway.res.o -o INWAY.exe -static -s -lws2_32 -lgd
 | [`res/inway.rc`](res/inway.rc)       | Icon, manifest, popups, version details                                  |
 | [`res/accept.htm`](res/accept.htm)   | "2.253 wants to control this PC"                                         |
 | [`res/banner.htm`](res/banner.htm)   | "2.253 is controlling this PC"                                           |
+| [`MAKE.bat`](MAKE.bat)               | Builds `INWAY.exe`                                                       |
+| [`MAKE32.bat`](MAKE32.bat)           | Builds `INWAY32.exe`                                                     |
 
 ---
 

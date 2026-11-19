@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -117,6 +117,7 @@
  */
 #include "version.h"
 /******* """""""""""
+ * #define INWAY_BITS_TEXT
  * #define INWAY_VERSION_TEXT
  */
 #include "text.h"
@@ -510,7 +511,10 @@ static void
 	LeaveCriticalSection(&G_CONSOLE_LOCK);
 	TEXT_ADD(&OUTPUT, CLEAR_SCREEN());
 	TEXT_ADD(&OUTPUT, "\n");
-	TITLE_BOX(&OUTPUT, "{w}I N W A Y{0}   {d}v" INWAY_VERSION_TEXT "{0}");
+	TITLE_BOX(
+		&OUTPUT,
+		"{w}I N W A Y{0}   {d}v" INWAY_VERSION_TEXT INWAY_BITS_TEXT "{0}"
+	);
 	TEXT_ADD(&OUTPUT, "\n");
 	if (G_MY_IP)
 	{
