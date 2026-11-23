@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -27,29 +27,79 @@
 #include <winsock2.h>
 /******* """"""""""""
  * #define AF_INET
+ * #define FD_SET
+ * #define FD_ZERO
+ * #define INADDR_ANY
+ * #define INADDR_BROADCAST
  * #define INVALID_SOCKET
  * #define IPPROTO_UDP
+ * #define SO_BROADCAST
  * #define SOCK_DGRAM
  * #define SOCK_STREAM
+ * #define SOCKET_ERROR
+ * #define SOL_SOCKET
  * typedef			SOCKET;
+ * typedef			fd_set;
  * struct sockaddr;
  * struct sockaddr_in;
+ * struct timeval;
  * typedef			u_short;
+ * int				bind(SOCKET, const struct sockaddr *, int);
  * int				closesocket(SOCKET);
  * int				connect(SOCKET, const struct sockaddr *, int);
  * int				gethostname(char *, int);
  * int				getsockname(SOCKET, struct sockaddr *, int *);
+ * u_long			htonl(u_long);
  * u_short			htons(u_short);
  * unsigned long	inet_addr(const char *);
  * u_long			ntohl(u_long);
  * u_short			ntohs(u_short);
  * int				recv(SOCKET, char *, int, int);
+ * int				recvfrom(
+ * 	SOCKET,
+ * 	char *,
+ * 	int,
+ * 	int,
+ * 	struct sockaddr *,
+ * 	int *
+ * );
+ * int				select(
+ * 	int,
+ * 	fd_set *,
+ * 	fd_set *,
+ * 	fd_set *,
+ * 	const struct timeval *
+ * );
  * int				send(SOCKET, const char *, int, int);
+ * int				sendto(
+ * 	SOCKET,
+ * 	const char *,
+ * 	int,
+ * 	int,
+ * 	const struct sockaddr *,
+ * 	int
+ * );
+ * int				setsockopt(SOCKET, int, int, const char *, int);
  * SOCKET			socket(int, int, int);
+ * int				WSAIoctl(
+ * 	SOCKET,
+ * 	DWORD,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	LPDWORD,
+ * 	LPWSAOVERLAPPED,
+ * 	LPWSAOVERLAPPED_COMPLETION_ROUTINE
+ * );
  */
 #include <ws2tcpip.h>
 /******* """"""""""""
+ * #define IFF_LOOPBACK
+ * #define IFF_UP
+ * #define SIO_GET_INTERFACE_LIST
  * struct addrinfo;
+ * typedef	INTERFACE_INFO;
  * void	freeaddrinfo(LPADDRINFO);
  * int	getaddrinfo(
  * 	const char *,
@@ -69,12 +119,28 @@
  * typedef	PDWORD;
  * typedef	PVOID;
  * typedef	ULONG;
+ * #define ComputerNamePhysicalDnsHostname
+ * #define TRUE
+ * BOOL		CloseHandle(HANDLE);
+ * HANDLE	CreateThread(
+ * 	LPSECURITY_ATTRIBUTES,
+ * 	SIZE_T,
+ * 	LPTHREAD_START_ROUTINE,
+ * 	LPVOID,
+ * 	DWORD,
+ * 	LPDWORD
+ * );
  * void		DeleteCriticalSection(LPCRITICAL_SECTION);
  * void		EnterCriticalSection(LPCRITICAL_SECTION);
  * BOOL		FreeLibrary(HMODULE);
+ * BOOL		GetComputerNameA(LPSTR, LPDWORD);
+ * BOOL		GetComputerNameExA(COMPUTER_NAME_FORMAT, LPSTR, LPDWORD);
  * FARPROC	GetProcAddress(HMODULE, LPCSTR);
+ * DWORD	GetTickCount(void);
  * void		InitializeCriticalSection(LPCRITICAL_SECTION);
+ * LONG		InterlockedExchange(LONG volatile *, LONG);
  * void		LeaveCriticalSection(LPCRITICAL_SECTION);
+ * void		Sleep(DWORD);
  * HMODULE	LoadLibraryW(LPCWSTR);
  */
 #include <iphlpapi.h>
@@ -98,8 +164,12 @@
 /******* """"""""""
  * #define NULL
  * typedef	size_t;
+ * int		_strnicmp(const char *, const char *, size_t);
+ * int		memcmp(const void *, const void *, size_t);
  * void		*memcpy(void *, const void *, size_t);
  * void		*memset(void *, int, size_t);
+ * size_t	strcspn(const char *, const char *);
+ * size_t	strlen(const char *);
  */
 #include <stdint.h>
 /******* """"""""""
@@ -115,6 +185,11 @@
 uint32_t	G_MY_IP = 0;
 
 #define HOME_NET 0XC0A80000U /* 192.168.0.0 */
+#define ASK_TEXT "INWAY-WHO?" /* + A NAME: WHICH PC IS CALLED THIS? */
+#define ANSWER_TEXT "INWAY-ME!" /* + THE NAME: THIS ONE, HERE I AM */
+#define ASK_EVERY_MS 300 /* THE QUESTION GOES OUT AGAIN THIS OFTEN */
+#define ASK_LONG_MS 1500 /* HOW LONG TO WAIT WHEN WINDOWS FOUND NOTHING */
+#define ASK_SHORT_MS 300 /* HOW LONG TO WAIT WHEN WINDOWS FOUND AN ADDRESS */
 
 int
 	SEND_ALL(SOCKET S, const void *BUFFER, int SIZE)
@@ -334,9 +409,284 @@ int
 	return (1);
 }
 
+/* .,,,,. #==========================================================# .,,,,. */
+/*  \\//  |                    FINDING A PC NAME                     |  \\//  */
+/*   \/   #==========================================================#   \/   */
 /*
-# WINDOWS FINDS THE NAME: FIRST THE ROUTER (DNS), THEN THE PCS AROUND (MDNS,
-# LLMNR, NETBIOS). A PC WITH MORE THAN ONE ADDRESS: THE HOME NETWORK ONE.
+# WINDOWS FINDS A NAME WITH THE ROUTER (DNS) OR BY ASKING THE PCS AROUND
+# (LLMNR, NETBIOS, MDNS). THE OTHER PC ONLY ANSWERS THOSE WHEN ITS FIREWALL
+# LETS THEM IN: ON A "PUBLIC" NETWORK, OR WITH NETWORK DISCOVERY OFF, IT
+# DOES NOT, AND THE NAME IS "NOT FOUND" WHILE ITS ADDRESS WORKS. SO INWAY
+# ALSO ASKS ITSELF: "INWAY-WHO?NAME" GOES AS A BROADCAST TO EVERY NETWORK OF
+# THIS PC (UDP, THE INWAY PORT), AND THE INWAY ON THE PC WITH THAT NAME
+# ANSWERS "INWAY-ME!NAME". ITS ADDRESS IS WHERE THE ANSWER CAME FROM.
+*/
+/* 1 = NAME (THE PART BEFORE A ".") IS THIS PC'S NAME, IN ANY CASE */
+static int
+	IS_MY_NAME(const char *NAME)
+{
+	char	MINE[256];
+	DWORD	SIZE;
+	size_t	LEN;
+
+	LEN = strcspn(NAME, ".");
+	if (!LEN || LEN >= sizeof(MINE))
+	{
+		return (0);
+	}
+	SIZE = sizeof(MINE);
+	if (GetComputerNameExA(ComputerNamePhysicalDnsHostname, MINE, &SIZE) &&
+		strlen(MINE) == LEN && _strnicmp(MINE, NAME, LEN) == 0)
+	{
+		return (1);
+	}
+	SIZE = sizeof(MINE);
+	if (GetComputerNameA(MINE, &SIZE) && strlen(MINE) == LEN &&
+		_strnicmp(MINE, NAME, LEN) == 0)
+	{
+		return (1);
+	}
+	return (0);
+}
+
+/* 1 = THE NAME OF AN ANSWER IS THE NAME THAT WAS ASKED, IN ANY CASE */
+static int
+	SAME_NAME(const char *ASKED, const char *ANSWERED)
+{
+	const size_t	A = strcspn(ASKED, ".");
+	const size_t	B = strcspn(ANSWERED, ".");
+
+	return (A == B && A && _strnicmp(ASKED, ANSWERED, A) == 0);
+}
+
+/*
+# THE QUESTION GOES TO 255.255.255.255 AND TO THE BROADCAST ADDRESS OF EVERY
+# NETWORK OF THIS PC (192.168.2.255...). WINDOWS SENDS 255.255.255.255 OUT
+# OF ONE NETWORK CARD ONLY, AND A PC WITH WI-FI, ETHERNET, HYPER-V OR A VPN
+# MAY PICK THE WRONG ONE.
+*/
+static void
+	ASK_SEND(SOCKET U, const char *NAME)
+{
+	INTERFACE_INFO		CARDS[32];
+	struct sockaddr_in	TO;
+	char				PACKET[128];
+	DWORD				BYTES;
+	int					COUNT;
+	int					LEN;
+	int					I;
+	uint32_t			ADDRESS;
+	uint32_t			MASK;
+
+	LEN = snprintf(PACKET, sizeof(PACKET), "%s%s", ASK_TEXT, NAME);
+	if (LEN <= 0 || LEN >= (int)sizeof(PACKET))
+	{
+		return ;
+	}
+	memset(&TO, 0, sizeof(TO));
+	TO.sin_family = AF_INET;
+	TO.sin_port = htons(INWAY_PORT);
+	TO.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+	sendto(U, PACKET, LEN, 0, (struct sockaddr *)&TO, sizeof(TO));
+	BYTES = 0;
+	if (WSAIoctl(U, SIO_GET_INTERFACE_LIST, NULL, 0, CARDS, sizeof(CARDS),
+		&BYTES, NULL, NULL) != 0)
+	{
+		return ;
+	}
+	COUNT = (int)(BYTES / sizeof(INTERFACE_INFO));
+	for (I = 0; I < COUNT; ++I)
+	{
+		if (!(CARDS[I].iiFlags & IFF_UP) || (CARDS[I].iiFlags & IFF_LOOPBACK))
+		{
+			continue ;
+		}
+		ADDRESS = ntohl(CARDS[I].iiAddress.AddressIn.sin_addr.s_addr);
+		MASK = ntohl(CARDS[I].iiNetmask.AddressIn.sin_addr.s_addr);
+		if (!LAN_RANK(ADDRESS) || !MASK || MASK == 0XFFFFFFFFU)
+		{
+			continue ;
+		}
+		TO.sin_addr.s_addr = htonl(ADDRESS | ~MASK);
+		sendto(U, PACKET, LEN, 0, (struct sockaddr *)&TO, sizeof(TO));
+	}
+}
+
+/* A UDP SOCKET THAT MAY BROADCAST, WITH THE FIRST QUESTION ALREADY SENT */
+static SOCKET
+	ASK_START(const char *NAME)
+{
+	SOCKET				U;
+	struct sockaddr_in	A;
+	BOOL				YES;
+
+	U = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (U == INVALID_SOCKET)
+	{
+		return (INVALID_SOCKET);
+	}
+	YES = TRUE;
+	setsockopt(U, SOL_SOCKET, SO_BROADCAST, (const char *)&YES, sizeof(YES));
+	memset(&A, 0, sizeof(A));
+	A.sin_family = AF_INET;
+	A.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (bind(U, (struct sockaddr *)&A, sizeof(A)) != 0)
+	{
+		closesocket(U);
+		return (INVALID_SOCKET);
+	}
+	ASK_SEND(U, NAME);
+	return (U);
+}
+
+/* 1 = THE PC CALLED NAME ANSWERED WITHIN WAIT_MS, ITS ADDRESS IN OUTPUT */
+static int
+	ASK_WAIT(SOCKET U, const char *NAME, DWORD WAIT_MS, uint32_t *OUTPUT)
+{
+	struct sockaddr_in	FROM;
+	struct timeval		TV;
+	fd_set				READ;
+	char				PACKET[160];
+	const size_t		LEN = sizeof(ANSWER_TEXT) - 1;
+	const DWORD			START = GetTickCount();
+	DWORD				PASSED;
+	DWORD				LAST_SENT;
+	int					SIZE;
+	int					GOT;
+
+	LAST_SENT = START;
+	for (;;)
+	{
+		PASSED = GetTickCount() - START;
+		if (PASSED >= WAIT_MS)
+		{
+			return (0);
+		}
+		if (GetTickCount() - LAST_SENT >= ASK_EVERY_MS)
+		{
+			ASK_SEND(U, NAME); /* A BROADCAST CAN GET LOST */
+			LAST_SENT = GetTickCount();
+		}
+		FD_ZERO(&READ);
+		FD_SET(U, &READ);
+		TV.tv_sec = 0;
+		TV.tv_usec = 50000;
+		if (select(0, &READ, NULL, NULL, &TV) <= 0)
+		{
+			continue ;
+		}
+		SIZE = sizeof(FROM);
+		GOT = recvfrom(U, PACKET, sizeof(PACKET) - 1, 0,
+			(struct sockaddr *)&FROM, &SIZE);
+		if (GOT <= (int)LEN)
+		{
+			continue ;
+		}
+		PACKET[GOT] = '\0';
+		if (memcmp(PACKET, ANSWER_TEXT, LEN) == 0 &&
+			SAME_NAME(NAME, PACKET + LEN) &&
+			LAN_RANK(ntohl(FROM.sin_addr.s_addr)))
+		{
+			*OUTPUT = ntohl(FROM.sin_addr.s_addr);
+			return (1);
+		}
+	}
+}
+
+/* THE SHARING SIDE: ANSWERS "INWAY-WHO?" WHEN THE NAME IS THIS PC'S NAME */
+static DWORD WINAPI
+	ANSWER_THREAD(LPVOID PARAMETER)
+{
+	SOCKET				U;
+	struct sockaddr_in	FROM;
+	char				PACKET[160];
+	char				REPLY[192];
+	const size_t		LEN = sizeof(ASK_TEXT) - 1;
+	int					SIZE;
+	int					GOT;
+	int					REPLY_LEN;
+
+	U = (SOCKET)(UINT_PTR)PARAMETER;
+	for (;;)
+	{
+		SIZE = sizeof(FROM);
+		GOT = recvfrom(U, PACKET, sizeof(PACKET) - 1, 0,
+			(struct sockaddr *)&FROM, &SIZE);
+		if (GOT == SOCKET_ERROR)
+		{
+			Sleep(50); /* AN OLD "PORT UNREACHABLE" OR A BAD PACKET */
+			continue ;
+		}
+		if (GOT <= (int)LEN)
+		{
+			continue ;
+		}
+		PACKET[GOT] = '\0';
+		if (memcmp(PACKET, ASK_TEXT, LEN) != 0 || !IS_MY_NAME(PACKET + LEN))
+		{
+			continue ;
+		}
+		REPLY_LEN = snprintf(
+			REPLY,
+			sizeof(REPLY),
+			"%s%s",
+			ANSWER_TEXT,
+			PACKET + LEN
+		);
+		if (REPLY_LEN > 0 && REPLY_LEN < (int)sizeof(REPLY))
+		{
+			sendto(U, REPLY, REPLY_LEN, 0, (struct sockaddr *)&FROM, SIZE);
+		}
+	}
+	return (0);
+}
+
+/*
+# ONCE PER PROCESS, WHEN THIS PC STARTS SHARING (HOST.C, OPEN_LISTENER).
+# WHEN ANOTHER INWAY ON THIS PC ALREADY ANSWERS, THE PORT IS TAKEN: FINE.
+*/
+void
+	NAME_ANSWER_START(void)
+{
+	static volatile LONG	STARTED = 0;
+	SOCKET					U;
+	struct sockaddr_in		A;
+	HANDLE					T;
+
+	if (InterlockedExchange(&STARTED, 1))
+	{
+		return ;
+	}
+	U = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (U == INVALID_SOCKET)
+	{
+		return ;
+	}
+	memset(&A, 0, sizeof(A));
+	A.sin_family = AF_INET;
+	A.sin_port = htons(INWAY_PORT);
+	A.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (bind(U, (struct sockaddr *)&A, sizeof(A)) != 0)
+	{
+		closesocket(U);
+		return ;
+	}
+	T = CreateThread(NULL, 0, ANSWER_THREAD, (LPVOID)(UINT_PTR)U, 0, NULL);
+	if (!T)
+	{
+		closesocket(U);
+		return ;
+	}
+	CloseHandle(T);
+}
+
+/*
+# BOTH AT ONCE: THE QUESTION GOES OUT, THEN WINDOWS LOOKS THE NAME UP (IT
+# MAY TAKE A SECOND OR TWO WHEN IT FINDS NOTHING); ANSWERS WAIT MEANWHILE.
+# AN INWAY ANSWER WINS: IT IS ON THIS NETWORK AND REALLY RUNS INWAY. A
+# WINDOWS ADDRESS IS USED WHEN NO INWAY ANSWERED (A NAME FROM A VPN LIKE
+# TAILSCALE, OR A PC THAT DOES NOT ANSWER BROADCASTS). A PC WITH MORE THAN
+# ONE ADDRESS: THE HOME NETWORK ONE.
 */
 static int
 	RESOLVE_NAME(const char *NAME, uint32_t *OUTPUT)
@@ -344,32 +694,52 @@ static int
 	struct addrinfo	HINTS;
 	struct addrinfo	*LIST;
 	struct addrinfo	*P;
+	SOCKET			U;
 	uint32_t		IP;
+	uint32_t		FOUND;
 	int				BEST;
 	int				RANK;
 
+	U = ASK_START(NAME);
 	memset(&HINTS, 0, sizeof(HINTS));
 	HINTS.ai_family = AF_INET;
 	HINTS.ai_socktype = SOCK_STREAM;
 	LIST = NULL;
-	if (getaddrinfo(NAME, NULL, &HINTS, &LIST) != 0 || !LIST)
+	BEST = 0;
+	FOUND = 0;
+	if (getaddrinfo(NAME, NULL, &HINTS, &LIST) == 0 && LIST)
+	{
+		for (P = LIST; P; P = P->ai_next)
+		{
+			IP = ntohl(((struct sockaddr_in *)P->ai_addr)->sin_addr.s_addr);
+			RANK = LAN_RANK(IP);
+			if (RANK > BEST)
+			{
+				BEST = RANK;
+				FOUND = IP;
+			}
+		}
+		freeaddrinfo(LIST);
+	}
+	if (U != INVALID_SOCKET)
+	{
+		if (ASK_WAIT(U, NAME, BEST ? ASK_SHORT_MS : ASK_LONG_MS, &IP))
+		{
+			FOUND = IP;
+			BEST = 1;
+		}
+		closesocket(U);
+	}
+	if (!BEST)
 	{
 		return (2);
 	}
-	BEST = 0;
-	for (P = LIST; P; P = P->ai_next)
-	{
-		IP = ntohl(((struct sockaddr_in *)P->ai_addr)->sin_addr.s_addr);
-		RANK = LAN_RANK(IP);
-		if (RANK > BEST)
-		{
-			BEST = RANK;
-			*OUTPUT = IP;
-		}
-	}
-	freeaddrinfo(LIST);
-	return (BEST ? 0 : 2);
+	*OUTPUT = FOUND;
+	return (0);
 }
+/*   /\   #==========================================================#   /\   */
+/*  //\\  |                    FINDING A PC NAME                     |  //\\  */
+/* '""""' #==========================================================# '""""' */
 
 /* 0 = OK, 1 = NOT AN ADDRESS OR A NAME, 2 = NO PC WITH THAT NAME WAS FOUND */
 int

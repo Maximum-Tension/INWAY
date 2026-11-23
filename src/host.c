@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -312,6 +312,7 @@
 /******* """""""
  * struct S_LINK;
  * void	IP_SHORT(uint32_t, char *, size_t);
+ * void	NAME_ANSWER_START(void);
  * void	LINK_FREE(struct S_LINK *);
  * void	LINK_INIT(struct S_LINK *, SOCKET);
  * int	LINK_SEND(
@@ -1830,6 +1831,7 @@ SOCKET
 		closesocket(LS);
 		return (INVALID_SOCKET);
 	}
+	NAME_ANSWER_START(); /* "WHICH PC IS CALLED ...?" FROM OTHER INWAYS */
 	return (LS);
 }
 

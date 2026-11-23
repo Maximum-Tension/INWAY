@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -19,8 +19,10 @@
 # SOCKET HELPERS AND EVERYTHING ABOUT ADDRESSES AND CODES. A PC ON THE SAME HOME
 # NETWORK IS SHOWN WITH ITS LAST TWO NUMBERS ONLY (192.168.2.253 IS "2.253"),
 # AND MISSING FRONT NUMBERS ARE TAKEN FROM THIS PC'S OWN ADDRESS, OR 192.168
-# WHEN THIS PC HAS NONE. A PC NAME ("OFIS-PC") WORKS TOO: WINDOWS LOOKS IT UP,
-# SO IT STILL WORKS WHEN THE ROUTER GIVES THAT PC ANOTHER ADDRESS.
+# WHEN THIS PC HAS NONE. A PC NAME ("OFIS-PC") WORKS TOO, SO IT STILL WORKS
+# WHEN THE ROUTER GIVES THAT PC ANOTHER ADDRESS: INWAY ASKS THE NETWORK FOR IT
+# ITSELF (THE INWAY ON THAT PC ANSWERS, SEE NAME_ANSWER_START) AND WINDOWS
+# LOOKS IT UP TOO (DNS, LLMNR, NETBIOS, A VPN LIKE TAILSCALE).
 */
 
 #ifndef NET_H
@@ -62,6 +64,7 @@ extern void		IP_SHORT(uint32_t IP, char *OUTPUT, size_t CAP);
 extern void		CODE_TEXT(int CODE, char *OUTPUT, size_t CAP);
 extern int		PARSE_ADDRESS(const char *INPUT, uint32_t *OUTPUT);
 extern int		ADDRESS_NAME(const char *INPUT, char *OUTPUT, size_t CAP);
+extern void		NAME_ANSWER_START(void);
 extern void		LINK_INIT(struct S_LINK *LINK, SOCKET S);
 extern int		LINK_SEND(
 	struct S_LINK *LINK,

@@ -1,4 +1,6 @@
-# Disclaimer
+<p align="center">
+ <img width="256" height="276" alt="icon" src="IMG/IMG1.png"/>
+</p>
 
 **INWAY is a tool for helping people with their own PCs. Use it only on PCs you own, or where the owner and the person using that PC agreed to it.**
 

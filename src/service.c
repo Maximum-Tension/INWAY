@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -406,6 +406,7 @@
 #define SVC_NAME L"INWAY"
 #define SVC_SHOW L"INWAY Remote Desktop"
 #define FW_RULE L"INWAY Remote Desktop"
+#define FW_NAME_RULE L"INWAY Name Lookup" /* UDP: "WHICH PC IS CALLED ...?" */
 #define SVC_FOLDER L"INWAY"
 /* THE OLD TOOL, FOR -REMOVEOLD */
 #define OLD_SVC L"ConnectRD"
@@ -499,6 +500,36 @@ static void
 		RULE
 	);
 	RUN_QUIET(COMMAND);
+}
+
+/*
+# OTHER INWAYS FIND THIS PC BY ITS NAME WITH A UDP QUESTION ON THE INWAY
+# PORT (NET.C). THE INSTALL RULE ONLY LETS TCP IN, SO THE SERVICE ADDS THIS
+# ONE EVERY TIME IT STARTS: ALSO A SERVICE INSTALLED BY AN OLDER INWAY GETS
+# IT, AND IT ALWAYS NAMES THE EXE THAT RUNS NOW. IT RUNS IN ITS OWN THREAD,
+# SO THE SCREEN SHARING DOES NOT WAIT FOR NETSH.
+*/
+static DWORD WINAPI
+	ALLOW_NAME_LOOKUP(LPVOID PARAMETER)
+{
+	WCHAR	EXE[MAX_PATH];
+	WCHAR	COMMAND[MAX_PATH + 256];
+
+	(void)PARAMETER;
+	EXE_PATH(EXE);
+	FIREWALL_DELETE(FW_NAME_RULE);
+	swprintf(
+		COMMAND,
+		MAX_PATH + 256,
+		L"netsh advfirewall firewall add rule name=\"%ls\" dir=in "
+		L"action=allow protocol=UDP localport=%d remoteip=localsubnet "
+		L"profile=any program=\"%ls\"",
+		FW_NAME_RULE,
+		INWAY_PORT,
+		EXE
+	);
+	RUN_QUIET(COMMAND);
+	return (0);
 }
 
 static void
@@ -716,6 +747,7 @@ static void WINAPI
 	HANDLE	WAITS[2];
 	HANDLE	WORKER;
 	HANDLE	UPDATER;
+	HANDLE	FIREWALL;
 	DWORD	WORKER_SESSION;
 	DWORD	SESSION;
 	DWORD	WAKE;
@@ -737,6 +769,11 @@ static void WINAPI
 	WAITS[0] = G__SVC_STOP__;
 	WAITS[1] = SAS_EVENT;
 	SET_STATE(SERVICE_RUNNING);
+	FIREWALL = CreateThread(NULL, 0, ALLOW_NAME_LOOKUP, NULL, 0, NULL);
+	if (FIREWALL)
+	{
+		CloseHandle(FIREWALL);
+	}
 	UPDATER = NULL;
 	if (!G__SVC_NO_UPDATE__) /* SERVERS UPDATE THEMSELVES, SEE UPDATE.C */
 	{
@@ -1660,13 +1697,20 @@ static int
 int
 	SERVICE_UNINSTALL(void)
 {
-	return (REMOVE_SERVICE(
+	int	RESULT;
+
+	RESULT = REMOVE_SERVICE(
 		SVC_NAME,
 		FW_RULE,
 		SVC_FOLDER,
 		L"INWAY.exe",
 		STR_I_NOT_INSTALLED
-	));
+	);
+	if (RESULT == SVC_DONE)
+	{
+		FIREWALL_DELETE(FW_NAME_RULE); /* THE SERVICE ADDED IT ITSELF */
+	}
+	return (RESULT);
 }
 
 int

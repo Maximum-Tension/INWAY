@@ -1,4 +1,6 @@
-# INWAY
+<p align="center">
+ <img width="256" height="276" alt="icon" src="IMG/IMG1.png"/>
+</p>
 
 **INWAY** is a tiny peer-to-peer remote desktop for Windows PCs on the same local network: one EXE, no account, no cloud, nothing to install.
 
@@ -103,7 +105,7 @@ With **Yes**, a hidden admin copy of INWAY serves the session and the normal one
 Open `INWAY.exe` and type the **Address** or the **Name** shown on the other PC, then press Enter.
 
 * `2.253` means `192.168.2.253`: the first two numbers come from your own PC. A full address works too.
-* **The name doesn't change** when the router gives that PC a new address, so for PCs you connect to often, use the name: `OFIS-PC`. Windows looks it up on your network first (the router, then the PCs around). When no PC answers to that name, INWAY says so: then use the address.
+* **The name doesn't change** when the router gives that PC a new address, so for PCs you connect to often, use the name: `OFIS-PC`. INWAY asks your network for it itself and **the INWAY on that PC answers**, so the name works even when Windows can't find that PC (a "Public" network, network discovery off). Windows looks it up at the same time too (the router, the PCs around, a VPN like Tailscale). When no PC answers to that name, INWAY says so: then use the address.
 * Then type the **Code**, or just press Enter: the other PC gets an **Accept / Cancel** window.
 
 The other screen opens in a new window. Close that window to stop.
@@ -325,7 +327,7 @@ Every sentence is in [`src/lang.c`](src/lang.c), one table per language. To add 
 
 * **The connection is not encrypted.** Someone who can watch the traffic on your network can see the screen and the keys, also a password typed on the lock screen. Use it at home or in your office, not on a public network.
 * **Who gets in:** only someone with the code, or someone you click **Accept** for. A wrong code costs 2 seconds, 5 in a row cost 30 seconds.
-* **The firewall rule** made by `-install` only accepts PCs from the local network.
+* **The firewall rule** made by `-install` only accepts PCs from the local network. The service also opens UDP `50506` for the local network only, so other INWAYs can find the PC by its name. It answers nothing but its own name.
 * **A server's code** is stored in its service settings, so an admin of that PC can read it. The normal-rights server keeps it in the sign-in list of that account.
 * **Admin rights stay inside the controlled PC.** The hidden admin copy only talks to INWAY on the same PC (`127.0.0.1`), and only after it sends a one-time secret.
 

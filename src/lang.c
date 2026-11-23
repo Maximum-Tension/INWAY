@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -215,7 +215,8 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_NAME] = "Name",
 	[STR_LOOKING] = "Looking for %s on this network ...",
 	[STR_NO_SUCH_NAME] =
-		"No PC called %s was found on this network. Try its Address."
+		"No PC called %s was found on this network. Check that INWAY is "
+		"running on it, or try its Address."
 };
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         ENGLISH                          |  //\\  */
@@ -405,7 +406,8 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_NAME] = "Ad",
 	[STR_LOOKING] = "%s bu ağda aranıyor ...",
 	[STR_NO_SUCH_NAME] =
-		"Bu ağda %s adında bir bilgisayar bulunamadı. Adresini deneyin."
+		"Bu ağda %s adında bir bilgisayar bulunamadı. Orada INWAY'in "
+		"çalıştığından emin olun ya da Adresini deneyin."
 };
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                         TURKISH                          |  //\\  */
