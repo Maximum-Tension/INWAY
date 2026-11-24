@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -58,6 +58,7 @@ extern uint32_t	G_MY_IP; /* THIS PC'S LAN ADDRESS, HOST ORDER, 0 = NONE */
 
 extern int		SEND_ALL(SOCKET S, const void *BUFFER, int SIZE);
 extern int		RECV_ALL(SOCKET S, void *BUFFER, int SIZE);
+extern int		NET_CONNECT(SOCKET S, uint32_t IP);
 extern uint32_t	PICK_LOCAL_IP(void);
 extern void		IP_FULL(uint32_t IP, char *OUTPUT, size_t CAP);
 extern void		IP_SHORT(uint32_t IP, char *OUTPUT, size_t CAP);

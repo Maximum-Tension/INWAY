@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -20,6 +20,7 @@
 #include "inway.h"
 /******* """""""""
  * #define _WIN32_WINNT
+ * #define INWAY_ASK_SECONDS
  * #define INWAY_PORT
  * #define INWAY_SAS_EVENT
  * #define WIN32_LEAN_AND_MEAN
@@ -43,6 +44,7 @@
  * #define FALSE
  * #define HKEY_CURRENT_USER
  * #define HKEY_LOCAL_MACHINE
+ * #define DESKTOP_READOBJECTS
  * #define INFINITE
  * #define INVALID_FILE_ATTRIBUTES
  * #define KEY_READ
@@ -81,6 +83,7 @@
  * #define TOKEN_ALL_ACCESS
  * #define TOKEN_QUERY
  * #define TRUE
+ * #define UOI_NAME
  * #define VOID
  * #define WAIT_OBJECT_0
  * #define WAIT_TIMEOUT
@@ -94,6 +97,7 @@
  * enum _TOKEN_INFORMATION_CLASS;
  * enum _TOKEN_TYPE;
  * typedef					HANDLE;
+ * typedef					HDESK;
  * typedef					HKEY;
  * typedef					HMODULE;
  * typedef					HWND;
@@ -137,6 +141,7 @@
  * 	LPCWSTR,
  * 	LPCWSTR
  * );
+ * BOOL						CloseDesktop(HDESK);
  * BOOL						CloseHandle(HANDLE);
  * BOOL						CloseServiceHandle(SC_HANDLE);
  * BOOL						ControlService(SC_HANDLE, DWORD, LPSERVICE_STATUS);
@@ -217,6 +222,7 @@
  * DWORD					GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
  * FARPROC					GetProcAddress(HMODULE, LPCSTR);
  * DWORD					GetProcessId(HANDLE);
+ * DWORD					GetTickCount(void);
  * BOOL						GetTokenInformation(
  * 	HANDLE,
  * 	TOKEN_INFORMATION_CLASS,
@@ -224,16 +230,25 @@
  * 	DWORD,
  * 	PDWORD
  * );
+ * BOOL						GetUserObjectInformationA(
+ * 	HANDLE,
+ * 	int,
+ * 	PVOID,
+ * 	DWORD,
+ * 	LPDWORD
+ * );
  * DWORD					GetWindowThreadProcessId(HWND, LPDWORD);
  * HMODULE					LoadLibraryW(LPCWSTR);
  * BOOL						LookupPrivilegeValueW(LPCWSTR, LPCWSTR, PLUID);
  * LPWSTR					lstrcatW(LPWSTR, LPCWSTR);
+ * int						lstrcmpiA(LPCSTR, LPCSTR);
  * int						lstrcmpiW(LPCWSTR, LPCWSTR);
  * LPWSTR					lstrcpynW(LPWSTR, LPCWSTR, int);
  * LPWSTR					lstrcpyW(LPWSTR, LPCWSTR);
  * int						lstrlenW(LPCWSTR);
  * BOOL						MoveFileExW(LPCWSTR, LPCWSTR, DWORD);
  * HANDLE					OpenEventW(DWORD, BOOL, LPCWSTR);
+ * HDESK					OpenInputDesktop(DWORD, BOOL, ACCESS_MASK);
  * BOOL						OpenProcessToken(HANDLE, DWORD, PHANDLE);
  * SC_HANDLE				OpenSCManagerW(LPCWSTR, LPCWSTR, DWORD);
  * SC_HANDLE				OpenServiceW(SC_HANDLE, LPCWSTR, DWORD);
@@ -389,8 +404,14 @@
  * #define SVC_NO_PERMISSION
  * #define SVC_NO_SCM
  * #define SVC_NOT_STARTED
+ * #define ASK_NOBODY
  * #define SVC_USER_EVENT
  * char	G_SVC_CODE[8];
+ */
+#include "htmlui.h"
+/******* """"""""""
+ * int	HTMLUI_ASK(SOCKET, const char *, const char *);
+ * int	HTMLUI_PEER_GONE(SOCKET);
  */
 #include "update.h"
 /******* """"""""""
@@ -1133,8 +1154,9 @@ int
 /*
 # THE FULL SERVER RUNS WITH SYSTEM RIGHTS. A WINDOW WITH THOSE RIGHTS ON THE
 # DESKTOP WOULD BE A WAY IN FOR ANYONE AT THE PC, SO THE "IS CONTROLLING THIS
-# PC" BANNER COMES FROM "INWAY.EXE -NOTICE", STARTED AS THE PERSON SIGNED IN.
-# NOBODY SIGNED IN (THE LOGIN SCREEN): NO BANNER, THERE IS NOBODY TO TELL.
+# PC" BANNER COMES FROM "INWAY.EXE -NOTICE", AND THE ACCEPT WINDOW FROM
+# "INWAY.EXE -ASK", BOTH STARTED AS THE PERSON SIGNED IN. NOBODY SIGNED IN
+# (THE LOGIN SCREEN): NO BANNER AND NO ACCEPT, THERE IS NOBODY TO ASK.
 */
 static void
 	ENABLE_PRIVILEGE(const WCHAR *NAME)
@@ -1187,12 +1209,12 @@ static HANDLE
 }
 
 /*
-# THE PROCESS OF THE BANNER ("INWAY.EXE -NOTICE"), OR NULL. THE FULL SERVER
-# STARTS IT AS THE PERSON SIGNED IN (NULL WHEN NOBODY IS), ANY OTHER INWAY AS
-# ITSELF.
+# "INWAY.EXE -<MODE> 2.253" (AND "-TO 2.98" WHEN TO IS GIVEN) AS THE PERSON
+# SIGNED IN TO THIS SESSION, ON THEIR DESKTOP. NULL WHEN NOBODY IS SIGNED IN.
+# ONLY THE FULL SERVER CAN DO IT.
 */
-HANDLE
-	SERVICE_NOTICE_START(const char *WHO)
+static HANDLE
+	START_AS_SIGNED_IN(const char *MODE, const char *WHO, const char *TO)
 {
 	typedef BOOL		(WINAPI *T_USER_TOKEN)(ULONG SESSION, PHANDLE TOKEN);
 	typedef BOOL		(WINAPI *T_MAKE_ENV)(LPVOID *ENV, HANDLE T, BOOL I);
@@ -1209,12 +1231,8 @@ HANDLE
 	LPVOID				ENV;
 	DWORD				SESSION;
 	WCHAR				EXE[MAX_PATH];
-	WCHAR				COMMAND[MAX_PATH + 64];
+	WCHAR				COMMAND[MAX_PATH + 160];
 
-	if (!G_WORKER)
-	{
-		return (NOTICE_AS_ME(WHO));
-	}
 	PROCESS = NULL;
 	WTS = LoadLibraryW(L"wtsapi32.dll");
 	USERENV = LoadLibraryW(L"userenv.dll");
@@ -1243,7 +1261,16 @@ HANDLE
 			ENV = NULL;
 		}
 		EXE_PATH(EXE);
-		swprintf(COMMAND, MAX_PATH + 64, L"\"%ls\" -notice %hs", EXE, WHO);
+		swprintf(
+			COMMAND,
+			MAX_PATH + 160,
+			L"\"%ls\" -%hs %hs%hs%hs",
+			EXE,
+			MODE,
+			WHO,
+			TO ? " -to " : "",
+			TO ? TO : ""
+		);
 		memset(&SI, 0, sizeof(SI));
 		SI.cb = sizeof(SI);
 		SI.lpDesktop = L"winsta0\\default";
@@ -1282,6 +1309,94 @@ HANDLE
 	return (PROCESS);
 }
 
+/*
+# THE PROCESS OF THE BANNER ("INWAY.EXE -NOTICE"), OR NULL. THE FULL SERVER
+# STARTS IT AS THE PERSON SIGNED IN (NULL WHEN NOBODY IS), ANY OTHER INWAY AS
+# ITSELF.
+*/
+HANDLE
+	SERVICE_NOTICE_START(const char *WHO)
+{
+	if (!G_WORKER)
+	{
+		return (NOTICE_AS_ME(WHO));
+	}
+	return (START_AS_SIGNED_IN("notice", WHO, NULL));
+}
+
+/*
+# THE LOCK SCREEN, THE LOGIN SCREEN AND THE "ALLOW THIS APP?" SCREEN ARE THE
+# "WINLOGON" DESKTOP. WITH SYSTEM RIGHTS IT OPENS AND HAS THAT NAME; A NORMAL
+# PROGRAM CAN NOT OPEN IT AT ALL. NOBODY CAN CLICK AN ACCEPT WINDOW THEN.
+*/
+static int
+	SCREEN_LOCKED(void)
+{
+	char		NAME[64];
+	DWORD		N;
+	int			LOCKED;
+	const HDESK	INPUT = OpenInputDesktop(0, FALSE, DESKTOP_READOBJECTS);
+
+	if (!INPUT)
+	{
+		return (1);
+	}
+	memset(NAME, 0, sizeof(NAME));
+	N = 0;
+	GetUserObjectInformationA(INPUT, UOI_NAME, NAME, sizeof(NAME) - 1, &N);
+	LOCKED = (lstrcmpiA(NAME, "Winlogon") == 0);
+	CloseDesktop(INPUT);
+	return (LOCKED);
+}
+
+/*
+# A SERVER WITHOUT THE CODE ASKS THE PERSON AT THE PC, LIKE A NORMAL INWAY.
+# THE NORMAL-RIGHTS SERVER RUNS AS THAT PERSON, SO IT SHOWS THE WINDOW
+# ITSELF. THE FULL SERVER STARTS "INWAY.EXE -ASK 2.253" AS THEM, WHICH
+# ANSWERS WITH ITS EXIT CODE (1 = ACCEPT). RETURNS LIKE HTMLUI_ASK(), OR
+# ASK_NOBODY WHEN THE SCREEN IS LOCKED OR NOBODY IS SIGNED IN. TO: SEE
+# HTMLUI_ASK(), IT GOES ON THE COMMAND LINE, SO ONLY A CHECKED ADDRESS.
+*/
+int
+	SERVICE_ASK(SOCKET S, const char *WHO, const char *TO)
+{
+	HANDLE	PROCESS;
+	DWORD	START;
+	DWORD	CODE;
+
+	if (SCREEN_LOCKED())
+	{
+		return (ASK_NOBODY);
+	}
+	if (!G_WORKER)
+	{
+		return (HTMLUI_ASK(S, WHO, TO));
+	}
+	PROCESS = START_AS_SIGNED_IN("ask", WHO, TO);
+	if (!PROCESS)
+	{
+		return (ASK_NOBODY);
+	}
+	START = GetTickCount();
+	while (WaitForSingleObject(PROCESS, 250) == WAIT_TIMEOUT)
+	{
+		if (HTMLUI_PEER_GONE(S))
+		{
+			SERVICE_NOTICE_STOP(PROCESS); /* CLOSES IT AND THE HANDLE */
+			return (-1);
+		}
+		if (GetTickCount() - START > (DWORD)(INWAY_ASK_SECONDS + 15) * 1000)
+		{
+			SERVICE_NOTICE_STOP(PROCESS);
+			return (0);
+		}
+	}
+	CODE = 0;
+	GetExitCodeProcess(PROCESS, &CODE);
+	CloseHandle(PROCESS);
+	return (CODE == 1);
+}
+
 static BOOL CALLBACK
 	CLOSE_WINDOWS_OF(HWND WINDOW, LPARAM PID)
 {
@@ -1307,7 +1422,7 @@ static DWORD WINAPI
 	return (0);
 }
 
-/* CLOSES THE BANNER OF SERVICE_NOTICE_START() AND FORGETS THE HANDLE */
+/* CLOSES THE BANNER (OR THE ACCEPT WINDOW) AND FORGETS THE HANDLE */
 void
 	SERVICE_NOTICE_STOP(HANDLE PROCESS)
 {

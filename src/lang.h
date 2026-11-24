@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -46,6 +46,9 @@ enum	E_STR
 	STR_BAD_ADDRESS,
 	STR_SELF_ADDRESS,
 	STR_CODE_HINT,
+	STR_CODE_ONLY_HINT, /* AFTER "NOBODY CAN CLICK ACCEPT" */
+	STR_VIA, /* -C A B: "CONNECTING TO B THROUGH A" */
+	STR_R_OLD_HOP, /* A WRONG CODE ON A PC IN BETWEEN */
 	STR_ASK_CODE,
 	STR_CODE_6,
 	STR_CONNECTING,
@@ -77,11 +80,14 @@ enum	E_STR
 	STR_N_REFUSED,
 	STR_N_GAVE_UP,
 	STR_N_WRONG,
+	STR_N_RELAYING, /* "2.253 -> 2.98: GOES THROUGH THIS PC" */
 	STR_N_CONTROLLING,
 	STR_N_STOPPED,
 	/* POPUP WINDOWS */
 	STR_H_TITLE,
 	STR_H_TEXT,
+	STR_H_RELAY_TITLE, /* ACCEPT FOR GOING THROUGH THIS PC */
+	STR_H_RELAY_TEXT,
 	STR_H_ACCEPT,
 	STR_H_CANCEL,
 	STR_H_COUNTDOWN,

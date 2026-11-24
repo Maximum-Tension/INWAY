@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -392,8 +392,8 @@ static HWND
 }
 
 /* 1 WHEN THE OTHER SIDE CLOSED THE CONNECTION WHILE WE WAIT */
-static int
-	PEER_GONE(SOCKET S)
+int
+	HTMLUI_PEER_GONE(SOCKET S)
 {
 	fd_set			READ;
 	struct timeval	TV;
@@ -417,15 +417,15 @@ static int
 /*  \\//  |                      ACCEPT WINDOW                       |  \\//  */
 /*   \/   #==========================================================#   \/   */
 static int
-	ASK_FALLBACK(const char *WHO)
+	ASK_FALLBACK(const char *TITLE, const char *BODY)
 {
 	struct S_TEXT	T = {0};
 	WCHAR			*TEXT;
 	int				ANSWER;
 
-	TEXT_ADDF(&T, LANG(STR_H_TITLE), WHO);
+	TEXT_ADD(&T, TITLE);
 	TEXT_ADD(&T, "\n\n");
-	TEXT_ADD(&T, LANG(STR_H_TEXT));
+	TEXT_ADD(&T, BODY);
 	TEXT = UTF8_TO_WIDE(T.DATA);
 	ANSWER = MessageBoxW(
 		NULL,
@@ -439,10 +439,13 @@ static int
 }
 
 int
-	HTMLUI_ASK(SOCKET S, const char *WHO)
+	HTMLUI_ASK(SOCKET S, const char *WHO, const char *TO)
 {
 	struct S_DIALOG	D;
 	struct S_TEXT	ARGS = {0};
+	struct S_TEXT	TITLE = {0};
+	const char		*BODY;
+	int				ANSWER;
 	FLASHWINFO		FLASH;
 	DWORD			START;
 	HWND			WINDOW;
@@ -450,12 +453,25 @@ int
 	int				GONE;
 
 	memset(&D, 0, sizeof(D));
+	/*
+	# THE PAGE PUTS THE NAME IN BOLD WHERE THE TITLE SAYS %s. "THROUGH THIS
+	# PC" HAS TWO NAMES, SO THAT TITLE COMES WRITTEN OUT ALREADY.
+	*/
+	if (TO)
+	{
+		TEXT_ADDF(&TITLE, LANG(STR_H_RELAY_TITLE), WHO, TO);
+	}
+	else
+	{
+		TEXT_ADDF(&TITLE, LANG(STR_H_TITLE), WHO);
+	}
+	BODY = TO ? LANG(STR_H_RELAY_TEXT) : LANG(STR_H_TEXT);
 	TEXT_ADDF(
 		&ARGS,
 		"%s\n%s\n%s\n%s\n%s\n%s\n%d",
 		WHO,
-		LANG(STR_H_TITLE),
-		LANG(STR_H_TEXT),
+		TO ? TITLE.DATA : LANG(STR_H_TITLE),
+		BODY,
 		LANG(STR_H_ACCEPT),
 		LANG(STR_H_CANCEL),
 		LANG(STR_H_COUNTDOWN),
@@ -500,7 +516,7 @@ int
 			FlashWindowEx(&FLASH);
 			SHOWN = 1;
 		}
-		if (!GONE && PEER_GONE(S))
+		if (!GONE && S != INVALID_SOCKET && HTMLUI_PEER_GONE(S))
 		{
 			GONE = 1;
 		}
@@ -517,12 +533,16 @@ int
 	free(D.ARGS);
 	if (GONE)
 	{
+		TEXT_FREE(&TITLE);
 		return (-1);
 	}
 	if (!D.THREAD || FAILED(D.HR))
 	{
-		return (ASK_FALLBACK(WHO)); /* NO MSHTML */
+		ANSWER = ASK_FALLBACK(TITLE.DATA, BODY); /* NO MSHTML */
+		TEXT_FREE(&TITLE);
+		return (ANSWER);
 	}
+	TEXT_FREE(&TITLE);
 	return (lstrcmpW(D.RESULT, L"accept") == 0);
 }
 /*   /\   #==========================================================#   /\   */

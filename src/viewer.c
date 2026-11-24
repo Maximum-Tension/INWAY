@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -29,7 +29,7 @@
  * #define INWAY_ADMIN_SECONDS
  * #define INWAY_ASK_SECONDS
  * #define INWAY_MAGIC
- * #define INWAY_PORT
+ * #define INWAY_RELAY
  * #define INWAY_TILE
  * #define MSG_CLIP_ABORT
  * #define MSG_CLIP_TEXT
@@ -38,6 +38,8 @@
  * #define REPLY_BUSY
  * #define REPLY_DECLINED
  * #define REPLY_NEED_CODE
+ * #define REPLY_NO_PC
+ * #define REPLY_RELAY_OK
  * #define REPLY_UPDATING
  * #define REPLY_WRONG_CODE
  * #define TILE_JPEG
@@ -49,10 +51,6 @@
 #include <winsock2.h>
 /******* """"""""""""
  * #define AF_INET
- * #define FD_ISSET(fd, set)
- * #define FD_SET(fd, set)
- * #define FD_ZERO(set)
- * #define FIONBIO
  * #define INVALID_SOCKET
  * #define IPPROTO_TCP
  * #define SD_BOTH
@@ -61,18 +59,9 @@
  * #define SOCK_STREAM
  * #define SOL_SOCKET
  * #define TCP_NODELAY
- * typedef	fd_set;
  * typedef	SOCKET;
- * struct sockaddr;
- * struct sockaddr_in;
- * typedef	u_long;
  * int		closesocket(SOCKET);
- * int		connect(SOCKET, const struct sockaddr *, int);
- * u_long	htonl(u_long);
- * u_short	htons(u_short);
- * int		ioctlsocket(SOCKET, long, u_long *);
  * int		recv(SOCKET, char *, int, int);
- * int		select(int, fd_set *, fd_set *, fd_set *, const TIMEVAL *);
  * int		setsockopt(SOCKET, int, int, const char *, int);
  * int		shutdown(SOCKET, int);
  * SOCKET	socket(int, int, int);
@@ -208,6 +197,7 @@
  * BOOL		InvalidateRect(HWND, const RECT *, BOOL);
  * void		LeaveCriticalSection(LPCRITICAL_SECTION);
  * HICON	LoadIconW(HINSTANCE, LPCWSTR);
+ * LPSTR	lstrcpynA(LPSTR, LPCSTR, int);
  * int		MessageBoxW(HWND, LPCWSTR, LPCWSTR, UINT);
  * BOOL		PostMessageW(HWND, UINT, WPARAM, LPARAM);
  * void		PostQuitMessage(int);
@@ -258,16 +248,13 @@
  * typedef	size_t;
  * void		*memcpy(void *, const void *, size_t);
  * void		*memset(void *, int, size_t);
+ * size_t	strlen(const char *);
  */
 #include <stdint.h>
 /******* """"""""""
  * typedef	int32_t;
  * typedef	uint32_t;
  * typedef	uint8_t;
- */
-#include <time.h>
-/******* """"""""
- * struct timeval;
  */
 #include "text.h"
 /******* """"""""
@@ -300,6 +287,7 @@
  * 	const void *,
  * 	uint32_t
  * );
+ * int	NET_CONNECT(SOCKET, uint32_t);
  * int	RECV_MSG(
  * 	SOCKET,
  * 	uint32_t *,
@@ -796,39 +784,6 @@ void
 	SetConsoleCtrlHandler(CTRL_HANDLER, TRUE);
 }
 
-/* CONNECT() THAT GIVES UP AFTER 4 SECONDS INSTEAD OF ABOUT 20 */
-static int
-	TCP_CONNECT(SOCKET S, uint32_t IP)
-{
-	struct sockaddr_in	A;
-	fd_set				W;
-	fd_set				E;
-	struct timeval		TV;
-	u_long				NB;
-	int					OK;
-
-	memset(&A, 0, sizeof(A));
-	A.sin_family = AF_INET;
-	A.sin_port = htons(INWAY_PORT);
-	A.sin_addr.s_addr = htonl(IP);
-	NB = 1;
-	ioctlsocket(S, FIONBIO, &NB);
-	OK = (connect(S, (struct sockaddr *)&A, sizeof(A)) == 0);
-	if (!OK && WSAGetLastError() == WSAEWOULDBLOCK)
-	{
-		FD_ZERO(&W);
-		FD_ZERO(&E);
-		FD_SET(S, &W);
-		FD_SET(S, &E);
-		TV.tv_sec = 4;
-		TV.tv_usec = 0;
-		OK = (select(0, NULL, &W, &E, &TV) == 1 && FD_ISSET(S, &W));
-	}
-	NB = 0;
-	ioctlsocket(S, FIONBIO, &NB);
-	return (OK);
-}
-
 /* THE {MAGIC, W, H} ANSWER, OR WHY THERE IS NONE */
 static enum E_RESULT
 	READ_HELLO(SOCKET S, int32_t CODE, int32_t *HELLO)
@@ -868,6 +823,11 @@ static enum E_RESULT
 		case (REPLY_WRONG_CODE): return (CR_WRONG_CODE);
 		case (REPLY_NEED_CODE): return (CR_NEED_CODE);
 		case (REPLY_UPDATING): return (CR_UPDATING);
+		case (REPLY_NO_PC): return (CR_NO_PC);
+	}
+	if (HELLO[1] == REPLY_RELAY_OK)
+	{
+		return (CR_ENDED); /* A PC IN BETWEEN: GO_THROUGH() LOOKS AT IT */
 	}
 	if (HELLO[1] < 0 || HELLO[2] <= 0 || HELLO[1] > 16384 || HELLO[2] > 16384)
 	{
@@ -931,11 +891,82 @@ static HWND
 	return (WINDOW);
 }
 
+/*
+# -C A B: EVERY PC BEFORE THE LAST ONE IS ASKED TO PASS THE CONNECTION ON TO
+# THE NEXT ONE (SEE INWAY.H). CR_ENDED: THE SOCKET NOW GOES TO THE LAST PC.
+*/
+static enum E_RESULT
+	GO_THROUGH(SOCKET S, const struct S_HOP *PCS, int COUNT, int *FAILED)
+{
+	int32_t			REQUEST[3];
+	int32_t			HELLO[3];
+	enum E_RESULT	RESULT;
+	int				I;
+
+	for (I = 0; I + 1 < COUNT; ++I)
+	{
+		*FAILED = I;
+		if (!PCS[I].CODE)
+		{
+			SAY("  {c}");
+			SAYF(LANG(STR_WAITING), PCS[I].LABEL);
+			SAY("{0}\n");
+		}
+		REQUEST[0] = INWAY_RELAY;
+		REQUEST[1] = PCS[I].CODE;
+		REQUEST[2] = (int32_t)strlen(PCS[I + 1].ADDRESS);
+		if (!SEND_ALL(S, REQUEST, sizeof(REQUEST)) ||
+			!SEND_ALL(S, PCS[I + 1].ADDRESS, REQUEST[2]))
+		{
+			return (CR_DROPPED);
+		}
+		RESULT = READ_HELLO(S, PCS[I].CODE, HELLO);
+		if (RESULT == CR_NO_PC)
+		{
+			*FAILED = I + 1; /* THIS PC COULD NOT FIND OR REACH THE NEXT ONE */
+		}
+		if (RESULT != CR_ENDED)
+		{
+			return (RESULT);
+		}
+		if (HELLO[1] != REPLY_RELAY_OK)
+		{
+			return (CR_VERSION);
+		}
+	}
+	*FAILED = COUNT - 1;
+	if (COUNT > 1 && !PCS[COUNT - 1].CODE)
+	{
+		SAY("  {c}");
+		SAYF(LANG(STR_WAITING), PCS[COUNT - 1].LABEL);
+		SAY("{0}\n");
+	}
+	return (CR_ENDED);
+}
+
 enum E_RESULT
 	VIEWER_CONNECT(uint32_t IP, int32_t CODE, const char *LABEL)
 {
+	struct S_HOP	PC;
+	int				FAILED;
+
+	memset(&PC, 0, sizeof(PC));
+	lstrcpynA(PC.LABEL, LABEL, sizeof(PC.LABEL));
+	PC.CODE = CODE;
+	return (VIEWER_CONNECT_VIA(IP, &PC, 1, &FAILED));
+}
+
+enum E_RESULT
+	VIEWER_CONNECT_VIA(
+		uint32_t IP,
+		const struct S_HOP *PCS,
+		int COUNT,
+		int *FAILED
+	)
+{
 	SOCKET			S;
 	int32_t			HELLO[3];
+	int32_t			CODE;
 	enum E_RESULT	RESULT;
 	BOOL			NO_DELAY;
 	int				BUFFER_SIZE;
@@ -943,12 +974,24 @@ enum E_RESULT
 	MSG				MSG_;
 	int				UPDATING;
 	int				TRY;
+	int				AGAIN;
+	int				I;
+	const char		*LABEL;
 
 	/*
 	# A SERVER MAY ANSWER "UPDATING" AND RESTART WITH THE NEW INWAY: THEN TRY
-	# AGAIN EVERY 3 SECONDS, FOR UP TO 90 SECONDS.
+	# AGAIN EVERY 3 SECONDS, FOR UP TO 90 SECONDS. THROUGH OTHER PCS ONLY WHEN
+	# THEY ALL GOT THEIR CODE: NOBODY THERE IS ASKED FOR ACCEPT AGAIN AND AGAIN.
 	*/
+	CODE = PCS[COUNT - 1].CODE;
+	LABEL = PCS[COUNT - 1].LABEL;
+	AGAIN = 1;
+	for (I = 0; I + 1 < COUNT; ++I)
+	{
+		AGAIN = AGAIN && PCS[I].CODE;
+	}
 	UPDATING = 0;
+	*FAILED = 0;
 	for (TRY = 0; ; ++TRY)
 	{
 		if (UPDATING)
@@ -960,7 +1003,8 @@ enum E_RESULT
 		{
 			return (CR_ERROR);
 		}
-		if (!TCP_CONNECT(S, IP) || !SEND_ALL(S, &CODE, 4))
+		*FAILED = 0;
+		if (!NET_CONNECT(S, IP))
 		{
 			closesocket(S);
 			if (UPDATING && TRY < 30)
@@ -969,15 +1013,20 @@ enum E_RESULT
 			}
 			return (UPDATING ? CR_UPDATING : CR_NO_PC);
 		}
-		RESULT = READ_HELLO(S, CODE, HELLO);
+		RESULT = GO_THROUGH(S, PCS, COUNT, FAILED);
+		if (RESULT == CR_ENDED)
+		{
+			RESULT = SEND_ALL(S, &CODE, 4) ? READ_HELLO(S, CODE, HELLO) :
+				CR_DROPPED;
+		}
 		if ((RESULT == CR_UPDATING || (UPDATING && RESULT == CR_DROPPED)) &&
-			TRY < 30)
+			TRY < 30 && AGAIN)
 		{
 			closesocket(S);
 			if (!UPDATING)
 			{
 				SAY("  {c}");
-				SAYF(LANG(STR_UPDATING_WAIT), LABEL);
+				SAYF(LANG(STR_UPDATING_WAIT), PCS[*FAILED].LABEL);
 				SAY("{0}\n");
 			}
 			UPDATING = 1;

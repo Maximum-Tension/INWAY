@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -32,6 +32,7 @@
  * #define INWAY_IDLE_MS
  * #define INWAY_MAGIC
  * #define INWAY_PORT
+ * #define INWAY_RELAY
  * #define INWAY_SAS_EVENT
  * #define INWAY_TILE
  * #define MSG_CLIP_ABORT
@@ -41,6 +42,8 @@
  * #define REPLY_BUSY
  * #define REPLY_DECLINED
  * #define REPLY_NEED_CODE
+ * #define REPLY_NO_PC
+ * #define REPLY_RELAY_OK
  * #define REPLY_UPDATING
  * #define REPLY_WRONG_CODE
  * #define TILE_EXACT
@@ -323,6 +326,8 @@
  * 	const void *,
  * 	uint32_t
  * );
+ * int	NET_CONNECT(SOCKET, uint32_t);
+ * int	PARSE_ADDRESS(const char *, uint32_t *);
  * int	RECV_ALL(SOCKET, void *, int);
  * int	RECV_MSG(
  * 	SOCKET,
@@ -365,7 +370,7 @@
  */
 #include "htmlui.h"
 /******* """"""""""
- * int	HTMLUI_ASK(SOCKET, const char *);
+ * int	HTMLUI_ASK(SOCKET, const char *, const char *);
  */
 #include "host.h"
 /******* """"""""
@@ -376,6 +381,8 @@
  */
 #include "service.h"
 /******* """""""""""
+ * #define ASK_NOBODY
+ * int		SERVICE_ASK(SOCKET, const char *, const char *);
  * int		SERVICE_IS_ADMIN(void);
  * HANDLE	SERVICE_NOTICE_START(const char *);
  * void		SERVICE_NOTICE_STOP(HANDLE);
@@ -1656,6 +1663,128 @@ static void
 	TEXT_FREE(&T);
 }
 
+/* .,,,,. #==========================================================# .,,,,. */
+/*  \\//  |                   GOING THROUGH THIS PC                  |  \\//  */
+/*   \/   #==========================================================#   \/   */
+/*
+# A PC THAT CAN NOT BE REACHED FROM THE VIEWER (THE PC NEXT TO A TAILSCALE PC,
+# ON ITS OWN NETWORK) IS REACHED THROUGH THIS ONE: "-C A 482382 2.253" (SEE
+# INWAY.H). AFTER THIS PC'S CODE OR ACCEPT, IT LOOKS THE NEXT ADDRESS UP ON ITS
+# OWN NETWORK (2.253 IS THEN 192.168.2.253 HERE, A NAME WORKS TOO), CONNECTS
+# TO IT AND ONLY COPIES THE BYTES BOTH WAYS. THE NEXT PC ASKS FOR ITS OWN CODE
+# OR ACCEPT, AND THIS PC NEVER SEES THE SCREEN: THE PICTURE IS NOT MADE TWICE,
+# LIKE WHEN INWAY RUNS INSIDE AN INWAY. ONLY LOCAL NETWORK ADDRESSES ARE PASSED
+# ON, SO THIS PC IS NO DOOR TO THE INTERNET. IT DOES NOT MAKE THIS PC BUSY: IT
+# CAN STILL BE CONTROLLED ITSELF MEANWHILE.
+*/
+/* 10.X, 172.16-31.X AND 192.168.X: THE ONLY ADDRESSES THAT ARE PASSED ON */
+static int
+	IS_LOCAL_NETWORK(uint32_t IP)
+{
+	return ((IP >> 24) == 10 || (IP >> 20) == 0XAC1 || (IP >> 16) == 0XC0A8);
+}
+
+/* LETTERS, NUMBERS, "." "-" "_": AN ADDRESS OR A PC NAME, NOTHING ELSE */
+static int
+	SAFE_TARGET(const char *TEXT)
+{
+	const char	*P;
+
+	for (P = TEXT; *P; ++P)
+	{
+		if (!((*P >= 'A' && *P <= 'Z') || (*P >= 'a' && *P <= 'z') ||
+			(*P >= '0' && *P <= '9') || *P == '.' || *P == '-' || *P == '_'))
+		{
+			return (0);
+		}
+	}
+	return (P != TEXT);
+}
+
+/* THE VIEWER SENT INWAY_RELAY INSTEAD OF A CODE */
+static void
+	PASS_ON(SOCKET S, const char *WHO)
+{
+	int32_t			REQUEST[2]; /* THE CODE (0 = ASK), THE ADDRESS LENGTH */
+	int32_t			MESSAGE[3];
+	char			TARGET[64];
+	char			TO[24];
+	char			ROUTE[96];
+	DWORD			TIMEOUT;
+	uint32_t		IP;
+	SOCKET			NEXT;
+	int				ANSWER;
+
+	TIMEOUT = 10000;
+	setsockopt(S, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
+	if (!RECV_ALL(S, REQUEST, sizeof(REQUEST)) || REQUEST[1] <= 0 ||
+		REQUEST[1] >= (int32_t)sizeof(TARGET) ||
+		!RECV_ALL(S, TARGET, REQUEST[1]))
+	{
+		return ;
+	}
+	TARGET[REQUEST[1]] = '\0';
+	TIMEOUT = 0;
+	setsockopt(S, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
+	if (!SAFE_TARGET(TARGET))
+	{
+		REPLY(S, REPLY_NO_PC);
+		return ;
+	}
+	if (REQUEST[0] == 0)
+	{
+		ANSWER = (G_WORKER || G_BACKGROUND) ? SERVICE_ASK(S, WHO, TARGET) :
+			HTMLUI_ASK(S, WHO, TARGET);
+		if (ANSWER != 1)
+		{
+			if (ANSWER == ASK_NOBODY || ANSWER == 0)
+			{
+				REPLY(S, ANSWER == 0 ? REPLY_DECLINED : REPLY_NEED_CODE);
+			}
+			return ;
+		}
+	}
+	else if (REQUEST[0] != G_CODE)
+	{
+		TELL("{r}", STR_N_WRONG, WHO);
+		Sleep(++G__WRONG_IN_A_ROW__ >= 5 ? 30000 : 2000);
+		REPLY(S, REPLY_WRONG_CODE);
+		return ;
+	}
+	else
+	{
+		G__WRONG_IN_A_ROW__ = 0;
+	}
+	NEXT = INVALID_SOCKET;
+	if (PARSE_ADDRESS(TARGET, &IP) != 0 || !IS_LOCAL_NETWORK(IP) ||
+		(NEXT = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET ||
+		!NET_CONNECT(NEXT, IP))
+	{
+		if (NEXT != INVALID_SOCKET)
+		{
+			closesocket(NEXT);
+		}
+		REPLY(S, REPLY_NO_PC);
+		return ;
+	}
+	MESSAGE[0] = INWAY_MAGIC;
+	MESSAGE[1] = REPLY_RELAY_OK;
+	MESSAGE[2] = REPLY_RELAY_OK;
+	if (!SEND_ALL(S, MESSAGE, sizeof(MESSAGE)))
+	{
+		closesocket(NEXT);
+		return ;
+	}
+	IP_SHORT(IP, TO, sizeof(TO));
+	snprintf(ROUTE, sizeof(ROUTE), "%s %s %s", WHO, SYM("→", "->"), TO);
+	TELL("{y}", STR_N_RELAYING, ROUTE);
+	RELAY(S, NEXT); /* THE SAME PUMP AS FOR THE ADMIN COPY */
+	closesocket(NEXT);
+}
+/*   /\   #==========================================================#   /\   */
+/*  //\\  |                   GOING THROUGH THIS PC                  |  //\\  */
+/* '""""' #==========================================================# '""""' */
+
 static DWORD WINAPI
 	CONNECTION_THREAD(LPVOID PARAMETER)
 {
@@ -1676,12 +1805,6 @@ static DWORD WINAPI
 	SIZE = sizeof(PEER);
 	getpeername(S, (struct sockaddr *)&PEER, &SIZE);
 	IP_SHORT(ntohl(PEER.sin_addr.s_addr), WHO, sizeof(WHO));
-	if (InterlockedCompareExchange(&G__BUSY__, 1, 0) != 0)
-	{
-		REPLY(S, REPLY_BUSY);
-		closesocket(S);
-		return (0);
-	}
 	/* FIRST THE VIEWER SENDS ITS CODE; 0 MEANS "PLEASE ASK THEM" */
 	TIMEOUT = 10000;
 	setsockopt(S, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
@@ -1689,22 +1812,46 @@ static DWORD WINAPI
 	if (!RECV_ALL(S, &GOT, 4))
 	{
 		closesocket(S);
-		InterlockedExchange(&G__BUSY__, 0);
 		return (0);
 	}
 	TIMEOUT = 0;
 	setsockopt(S, SOL_SOCKET, SO_RCVTIMEO, (char *)&TIMEOUT, sizeof(TIMEOUT));
-	if (GOT == 0 && (G_WORKER || G_BACKGROUND))
+	if (GOT == INWAY_RELAY)
 	{
-		InterlockedExchange(&G__BUSY__, 0);
-		REPLY(S, REPLY_NEED_CODE); /* A SERVER: ONLY ITS CODE WORKS */
+		PASS_ON(S, WHO); /* NOT FOR THIS PC: IT ONLY GOES THROUGH */
 		closesocket(S);
 		return (0);
 	}
+	if (InterlockedCompareExchange(&G__BUSY__, 1, 0) != 0)
+	{
+		REPLY(S, REPLY_BUSY);
+		closesocket(S);
+		return (0);
+	}
+	if (GOT == 0 && (G_WORKER || G_BACKGROUND) && SERVER_UPDATING())
+	{
+		InterlockedExchange(&G__BUSY__, 0);
+		REPLY(S, REPLY_UPDATING); /* UPDATE FIRST: NOBODY IS ASKED TWICE */
+		closesocket(S);
+		return (0);
+	}
+	/*
+	# NO CODE: SOMEONE AT THIS PC IS ASKED TO CLICK ACCEPT, ALSO ON A SERVER
+	# (SERVICE_ASK). A SERVER THAT IS LOCKED, OR WHERE NOBODY IS SIGNED IN,
+	# HAS NOBODY TO ASK: THEN ONLY ITS CODE WORKS.
+	*/
 	if (GOT == 0)
 	{
 		TELL("{c}", STR_N_ASKING, WHO);
-		ANSWER = HTMLUI_ASK(S, WHO);
+		ANSWER = (G_WORKER || G_BACKGROUND) ? SERVICE_ASK(S, WHO, NULL) :
+			HTMLUI_ASK(S, WHO, NULL);
+		if (ANSWER == ASK_NOBODY)
+		{
+			InterlockedExchange(&G__BUSY__, 0);
+			REPLY(S, REPLY_NEED_CODE);
+			closesocket(S);
+			return (0);
+		}
 		if (ANSWER != 1)
 		{
 			InterlockedExchange(&G__BUSY__, 0);

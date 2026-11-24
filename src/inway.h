@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -49,20 +49,33 @@
 #define INWAY_ASK_SECONDS 60 /* ACCEPT WINDOW GIVES UP AFTER */
 #define INWAY_ADMIN_SECONDS 30 /* NO ANSWER TO "ADMIN RIGHTS?": NORMAL RIGHTS */
 #define INWAY_SAS_EVENT L"Global\\INWAY_SAS" /* WORKER -> SERVICE */
+#define INWAY_RELAY 0X52454C31 /* "REL1": SENT INSTEAD OF A CODE, SEE BELOW */
+#define INWAY_MAX_HOPS 4 /* -C A B C ...: PCS IN BETWEEN, AT MOST */
 
 /*
 # REPLIES THE SHARING SIDE SENDS INSTEAD OF A SCREEN SIZE:
 # - {MAGIC,  0,  0} THE PERSON CLICKED CANCEL
 # - {MAGIC, -1, -1} SOMEONE ELSE IS ALREADY CONNECTED
 # - {MAGIC, -2, -2} WRONG CODE
-# - {MAGIC, -3, -3} THIS PC IS A SERVER AND ONLY TAKES ITS CODE
+# - {MAGIC, -3, -3} NOBODY CAN CLICK ACCEPT HERE: ONLY THE CODE WORKS
 # - {MAGIC, -4, -4} THIS SERVER IS UPDATING ITSELF: TRY AGAIN IN A MOMENT
+# "PASS ME ON" (-C A 482382 2.253): INSTEAD OF A CODE, THE VIEWER SENDS
+# {INWAY_RELAY, CODE OF A, LENGTH} AND THE NEXT PC'S ADDRESS AS TYPED. A
+# CHECKS ITS CODE (OR ASKS FOR ACCEPT), CONNECTS TO THAT PC ON ITS OWN
+# NETWORK AND ANSWERS:
+# - {MAGIC, -10, -10} CONNECTED: FROM NOW ON A ONLY COPIES THE BYTES, AND IT
+#   GOES ON AS IF THE VIEWER WAS CONNECTED TO THE NEXT PC (CODE, HELLO, ...)
+# - {MAGIC, -11, -11} A COULD NOT FIND OR REACH THE NEXT PC
+# OR ONE OF THE REPLIES ABOVE (WRONG CODE, CANCEL ...). AN INWAY OLDER THAN
+# 20.26.11.24 TAKES INWAY_RELAY FOR A WRONG CODE.
 */
 #define REPLY_DECLINED 0
 #define REPLY_BUSY -1
 #define REPLY_WRONG_CODE -2
 #define REPLY_NEED_CODE -3
 #define REPLY_UPDATING -4
+#define REPLY_RELAY_OK -10
+#define REPLY_NO_PC -11
 /* *************************** [^] CONNECTION [^] *************************** */
 
 /* ********************** [v] MESSAGES ON THE WIRE [v] ********************** */

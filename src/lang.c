@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -70,6 +70,11 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_CODE_HINT] =
 		"If you have the code, type it. If not, just press Enter and %s "
 		"will be asked to click Accept.",
+	[STR_CODE_ONLY_HINT] =
+		"Type the code of %s, or press Enter to ask again.",
+	[STR_VIA] = "Connecting to %s through %s ...",
+	[STR_R_OLD_HOP] =
+		"Or its INWAY is older than 20.26.11.24 and can not pass you on.",
 	[STR_ASK_CODE] = "Code:",
 	[STR_CODE_6] = "The code has 6 numbers, like 123 456. Try again.",
 	[STR_CONNECTING] = "Connecting to %s ...",
@@ -77,7 +82,8 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_WRONG_CODE_RETRY] =
 		"That code is not right. Look at the code on the other PC's screen.",
 	[STR_NEED_CODE_RETRY] =
-		"%s is a server: it only lets you in with its code.",
+		"Nobody at %s can click Accept right now (it is locked, or nobody "
+		"is signed in), so only its code works.",
 	[STR_CONNECTED] = "Connected! The other screen is open in a new window.",
 	[STR_CONNECTED_HINT] =
 		"Close that window to stop. For Ctrl+Alt+Del, use the menu at its "
@@ -111,10 +117,15 @@ static const char	*const G__EN__[STR__COUNT] =
 	[STR_N_REFUSED] = "You did not let %s in.",
 	[STR_N_GAVE_UP] = "%s stopped asking.",
 	[STR_N_WRONG] = "%s typed a wrong code.",
+	[STR_N_RELAYING] = "%s: goes through this PC.",
 	[STR_N_CONTROLLING] = "%s is now controlling this PC.",
 	[STR_N_STOPPED] = "%s stopped controlling this PC.",
 
 	[STR_H_TITLE] = "%s wants to control this PC",
+	[STR_H_RELAY_TITLE] = "%s wants to reach %s through this PC",
+	[STR_H_RELAY_TEXT] =
+		"This PC only passes the connection on. They will not see or use "
+		"this screen.",
 	[STR_H_TEXT] =
 		"They will see your screen and use your mouse and keyboard.",
 	[STR_H_ACCEPT] = "Accept",
@@ -181,6 +192,9 @@ static const char	*const G__EN__[STR__COUNT] =
 		"  INWAY.exe -c 2.253 948248     connect to 2.253 once, with a code\n"
 		"  INWAY.exe -c 2.253            connect to 2.253 once, they Accept\n"
 		"  INWAY.exe -c OFIS-PC 948248   a PC name works too\n"
+		"  INWAY.exe -c 100.80.120.66 482382 2.253 948248\n"
+		"                                reach 2.253 through 100.80.120.66\n"
+		"                                (each code can be left out)\n"
 		"  INWAY.exe -install -p 938572  share all the time, also on the\n"
 		"                                lock screen (for servers)\n"
 		"  INWAY.exe -install            same, with a random code (or the\n"
@@ -254,6 +268,11 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_CODE_HINT] =
 		"Kodu biliyorsanız yazın. Bilmiyorsanız sadece Enter'a basın; "
 		"%s üzerindeki kişiden Kabul Et'e tıklaması istenir.",
+	[STR_CODE_ONLY_HINT] =
+		"%s kodunu yazın ya da yeniden sormak için Enter'a basın.",
+	[STR_VIA] = "%s bilgisayarına %s üzerinden bağlanılıyor ...",
+	[STR_R_OLD_HOP] =
+		"Ya da oradaki INWAY 20.26.11.24'ten eski ve sizi iletemiyor.",
 	[STR_ASK_CODE] = "Kod:",
 	[STR_CODE_6] = "Kod 6 rakamdan oluşur, örneğin 123 456. Tekrar deneyin.",
 	[STR_CONNECTING] = "%s adresine bağlanılıyor ...",
@@ -261,7 +280,8 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_WRONG_CODE_RETRY] =
 		"Bu kod doğru değil. Diğer bilgisayarın ekranındaki koda bakın.",
 	[STR_NEED_CODE_RETRY] =
-		"%s bir sunucu: yalnızca kendi koduyla içeri alır.",
+		"%s başında şu an Kabul Et'e tıklayabilecek kimse yok (kilitli ya "
+		"da kimse oturum açmamış), bu yüzden yalnızca kodu işe yarar.",
 	[STR_CONNECTED] = "Bağlandı! Diğer ekran yeni bir pencerede açıldı.",
 	[STR_CONNECTED_HINT] =
 		"Durdurmak için o pencereyi kapatın. Ctrl+Alt+Del için üstteki "
@@ -299,10 +319,16 @@ static const char	*const G__TR__[STR__COUNT] =
 	[STR_N_REFUSED] = "%s içeri alınmadı.",
 	[STR_N_GAVE_UP] = "%s istemekten vazgeçti.",
 	[STR_N_WRONG] = "%s yanlış kod girdi.",
+	[STR_N_RELAYING] = "%s: bu bilgisayarın üzerinden geçiyor.",
 	[STR_N_CONTROLLING] = "%s şu an bu bilgisayarı kontrol ediyor.",
 	[STR_N_STOPPED] = "%s bu bilgisayarın kontrolünü bıraktı.",
 
 	[STR_H_TITLE] = "%s bu bilgisayarı kontrol etmek istiyor",
+	[STR_H_RELAY_TITLE] =
+		"%s, bu bilgisayarın üzerinden %s bilgisayarına ulaşmak istiyor",
+	[STR_H_RELAY_TEXT] =
+		"Bu bilgisayar bağlantıyı yalnızca iletir. Bu ekranı görmezler ve "
+		"kullanamazlar.",
 	[STR_H_TEXT] = "Ekranınızı görecek, fare ve klavyenizi kullanacak.",
 	[STR_H_ACCEPT] = "Kabul Et",
 	[STR_H_CANCEL] = "İptal",
@@ -370,6 +396,9 @@ static const char	*const G__TR__[STR__COUNT] =
 		"  INWAY.exe -c 2.253 948248     2.253'e kodla bir kez bağlan\n"
 		"  INWAY.exe -c 2.253            2.253'e bağlan, karşı taraf onaylar\n"
 		"  INWAY.exe -c OFIS-PC 948248   bilgisayar adı da olur\n"
+		"  INWAY.exe -c 100.80.120.66 482382 2.253 948248\n"
+		"                                2.253'e 100.80.120.66 üzerinden\n"
+		"                                ulaş (kodlar yazılmayabilir)\n"
 		"  INWAY.exe -install -p 938572  her zaman paylaş, kilit ekranında\n"
 		"                                da (sunucular için)\n"
 		"  INWAY.exe -install            aynısı, rastgele kodla (ya da\n"

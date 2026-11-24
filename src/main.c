@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/18 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -25,6 +25,7 @@
 #include "inway.h"
 /******* """""""""
  * #define _WIN32_WINNT
+ * #define INWAY_MAX_HOPS
  * #define WIN32_LEAN_AND_MEAN
  * enum E_RESULT;
  */
@@ -166,6 +167,7 @@
  */
 #include "htmlui.h"
 /******* """"""""""
+ * int	HTMLUI_ASK(SOCKET, const char *, const char *);
  * int	HTMLUI_NOTICE(const char *);
  */
 #include "host.h"
@@ -179,7 +181,14 @@
 /******* """"""""""
  * int				G_HIDE_CONSOLE;
  * volatile LONG	G_QUIT;
+ * struct S_HOP;
  * enum E_RESULT	VIEWER_CONNECT(uint32_t, int32_t, const char *);
+ * enum E_RESULT	VIEWER_CONNECT_VIA(
+ * 	uint32_t,
+ * 	const struct S_HOP *,
+ * 	int,
+ * 	int *
+ * );
  * void				VIEWER_INIT(void);
  */
 #include "service.h"
@@ -223,6 +232,11 @@ struct	S_OPTIONS
 	char	LANGUAGE[8]; /* -LANG */
 	char	SERVE[48]; /* -SERVE PIPE: THE ADMIN COPY OF ONE SESSION */
 	char	NOTICE[24]; /* -NOTICE 2.253: THE FULL SERVER'S BANNER */
+	char	ASK[24]; /* -ASK 2.253: THE FULL SERVER'S ACCEPT WINDOW */
+	char	TO[64]; /* -ASK 2.253 -TO 2.98: TO GO THROUGH THIS PC */
+	char	NEXT[INWAY_MAX_HOPS][64]; /* -C A B C: THE PCS AFTER A */
+	char	NEXT_CODE[INWAY_MAX_HOPS][8];
+	int		NEXT_COUNT;
 	int		CONNECT;
 	int		INSTALL;
 	int		UNINSTALL;
@@ -378,6 +392,19 @@ static void
 			O->CONNECT = 1;
 			snprintf(O->ADDRESS, sizeof(O->ADDRESS), "%s", ARGV[++I]);
 			TAKE_CODE(ARGC, ARGV, &I, O->CONNECT_CODE);
+			/* -C A [CODE] B [CODE]: B IS REACHED THROUGH A (MORE CAN FOLLOW) */
+			while (I + 1 < ARGC && O->NEXT_COUNT < INWAY_MAX_HOPS &&
+				ARGV[I + 1][0] != '-' && ARGV[I + 1][0] != '/')
+			{
+				snprintf(
+					O->NEXT[O->NEXT_COUNT],
+					sizeof(O->NEXT[0]),
+					"%s",
+					ARGV[++I]
+				);
+				TAKE_CODE(ARGC, ARGV, &I, O->NEXT_CODE[O->NEXT_COUNT]);
+				++O->NEXT_COUNT;
+			}
 		}
 		else if (IS_OPTION(ARGV[I], "lang") && I + 1 < ARGC)
 		{
@@ -422,6 +449,14 @@ static void
 		else if (IS_OPTION(ARGV[I], "notice") && I + 1 < ARGC)
 		{
 			snprintf(O->NOTICE, sizeof(O->NOTICE), "%s", ARGV[++I]);
+		}
+		else if (IS_OPTION(ARGV[I], "ask") && I + 1 < ARGC)
+		{
+			snprintf(O->ASK, sizeof(O->ASK), "%s", ARGV[++I]);
+		}
+		else if (IS_OPTION(ARGV[I], "to") && I + 1 < ARGC)
+		{
+			snprintf(O->TO, sizeof(O->TO), "%s", ARGV[++I]);
 		}
 		else if (IS_OPTION(ARGV[I], "background"))
 		{
@@ -945,31 +980,61 @@ static int
 	return (0);
 }
 
-/* -C: CONNECT ONCE. WHEN THAT SESSION ENDS, INWAY ENDS. */
+/*
+# -C: CONNECT ONCE. WHEN THAT SESSION ENDS, INWAY ENDS. -C A [CODE] B [CODE]:
+# B IS REACHED THROUGH A (VIEWER_CONNECT_VIA). ONLY A IS LOOKED UP HERE; A
+# LOOKS B UP ON ITS OWN NETWORK, SO "2.253" THERE IS A'S 192.168.2.253.
+*/
 static int
 	CONNECT_ONCE(const struct S_OPTIONS *O)
 {
 	struct S_TEXT	OUTPUT = {0};
+	struct S_TEXT	CHAIN = {0};
+	struct S_HOP	PCS[INWAY_MAX_HOPS + 1];
 	enum E_RESULT	R;
 	uint32_t		IP;
 	DWORD			PIDS[4];
-	char			LABEL[64];
+	const char		*MORE[1];
+	int				COUNT;
+	int				FAILED;
+	int				I;
 
 	SAY("\n");
-	if (FIND_PC(O->ADDRESS, &IP, LABEL, sizeof(LABEL)) != 0)
+	memset(PCS, 0, sizeof(PCS));
+	if (FIND_PC(O->ADDRESS, &IP, PCS[0].LABEL, sizeof(PCS[0].LABEL)) != 0)
 	{
 		PRESS_ENTER(STR_PRESS_ENTER_CLOSE);
 		return (1);
 	}
+	PCS[0].CODE = O->CONNECT_CODE[0] ? atoi(O->CONNECT_CODE) : 0;
+	COUNT = 1 + O->NEXT_COUNT;
+	for (I = 1; I < COUNT; ++I)
+	{
+		snprintf(PCS[I].ADDRESS, sizeof(PCS[I].ADDRESS), "%s", O->NEXT[I - 1]);
+		snprintf(PCS[I].LABEL, sizeof(PCS[I].LABEL), "%s", O->NEXT[I - 1]);
+		PCS[I].CODE = O->NEXT_CODE[I - 1][0] ? atoi(O->NEXT_CODE[I - 1]) : 0;
+	}
 	SAY("  {c}");
-	SAYF(LANG(O->CONNECT_CODE[0] ? STR_CONNECTING : STR_WAITING), LABEL);
+	if (COUNT > 1)
+	{
+		for (I = 0; I + 1 < COUNT; ++I)
+		{
+			if (I)
+			{
+				TEXT_ADDF(&CHAIN, " %s ", SYM("→", "->"));
+			}
+			TEXT_ADDF(&CHAIN, "%s", PCS[I].LABEL);
+		}
+		SAYF(LANG(STR_VIA), PCS[COUNT - 1].LABEL, CHAIN.DATA);
+		TEXT_FREE(&CHAIN);
+	}
+	else
+	{
+		SAYF(LANG(PCS[0].CODE ? STR_CONNECTING : STR_WAITING), PCS[0].LABEL);
+	}
 	SAY("{0}\n");
 	G_HIDE_CONSOLE = 1;
-	R = VIEWER_CONNECT(
-		IP,
-		O->CONNECT_CODE[0] ? atoi(O->CONNECT_CODE) : 0,
-		LABEL
-	);
+	R = VIEWER_CONNECT_VIA(IP, PCS, COUNT, &FAILED);
 	/*
 	# THE TEXT WINDOW WAS HIDDEN DURING THE SESSION. WHEN IT BELONGS TO A .BAT
 	# OR ANOTHER PROGRAM TOO, SHOW IT AGAIN: THAT ONE GOES ON AFTER US.
@@ -982,7 +1047,22 @@ static int
 	{
 		return (0);
 	}
-	SHOW_RESULT(&OUTPUT, R, LABEL);
+	if (R == CR_WRONG_CODE && FAILED + 1 < COUNT)
+	{
+		MORE[0] = LANG(STR_R_OLD_HOP); /* AN OLD INWAY TAKES IT FOR A CODE */
+		SHOW_RESULT_BOX(
+			&OUTPUT,
+			STR_R_WRONG_T,
+			STR_R_WRONG,
+			PCS[FAILED].LABEL,
+			MORE,
+			1
+		);
+	}
+	else
+	{
+		SHOW_RESULT(&OUTPUT, R, PCS[FAILED].LABEL);
+	}
 	SAY("\n");
 	SAY(OUTPUT.DATA);
 	TEXT_FREE(&OUTPUT);
@@ -1005,6 +1085,7 @@ static int
 	size_t			K;
 	size_t			N;
 	int				TYPED;
+	int				CODE_ONLY;
 
 	TEXT_ADD(&NOTICE, ERRORS);
 	ARROW = SYM("►", ">");
@@ -1039,10 +1120,11 @@ static int
 			break ;
 		}
 		/* 2) THE CODE, OR NOTHING TO ASK THEM */
+		CODE_ONLY = 0;
 		for (;;)
 		{
 			SAY("\n  {d}");
-			SAYF(LANG(STR_CODE_HINT), LABEL);
+			SAYF(LANG(CODE_ONLY ? STR_CODE_ONLY_HINT : STR_CODE_HINT), LABEL);
 			SAY("{0}\n");
 			Q.LEN = 0;
 			TEXT_ADDF(&Q, "  {g}%s{0} {w}%s{0} ", ARROW, LANG(STR_ASK_CODE));
@@ -1084,6 +1166,7 @@ static int
 				SAY("  {r}");
 				SAYF(LANG(STR_NEED_CODE_RETRY), LABEL);
 				SAY("{0}\n");
+				CODE_ONLY = 1;
 				continue ;
 			}
 			break ;
@@ -1144,6 +1227,11 @@ int
 	if (O.NOTICE[0])
 	{
 		return (HTMLUI_NOTICE(O.NOTICE)); /* 1 = DISCONNECT WAS CLICKED */
+	}
+	if (O.ASK[0])
+	{
+		/* 1 = ACCEPT */
+		return (HTMLUI_ASK(INVALID_SOCKET, O.ASK, O.TO[0] ? O.TO : NULL) == 1);
 	}
 	if (O.BACKGROUND)
 	{

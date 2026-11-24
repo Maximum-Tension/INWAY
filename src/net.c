@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/23 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -27,8 +27,10 @@
 #include <winsock2.h>
 /******* """"""""""""
  * #define AF_INET
+ * #define FD_ISSET
  * #define FD_SET
  * #define FD_ZERO
+ * #define FIONBIO
  * #define INADDR_ANY
  * #define INADDR_BROADCAST
  * #define INVALID_SOCKET
@@ -38,11 +40,13 @@
  * #define SOCK_STREAM
  * #define SOCKET_ERROR
  * #define SOL_SOCKET
+ * #define WSAEWOULDBLOCK
  * typedef			SOCKET;
  * typedef			fd_set;
  * struct sockaddr;
  * struct sockaddr_in;
  * struct timeval;
+ * typedef			u_long;
  * typedef			u_short;
  * int				bind(SOCKET, const struct sockaddr *, int);
  * int				closesocket(SOCKET);
@@ -52,6 +56,7 @@
  * u_long			htonl(u_long);
  * u_short			htons(u_short);
  * unsigned long	inet_addr(const char *);
+ * int				ioctlsocket(SOCKET, long, u_long *);
  * u_long			ntohl(u_long);
  * u_short			ntohs(u_short);
  * int				recv(SOCKET, char *, int, int);
@@ -81,6 +86,7 @@
  * );
  * int				setsockopt(SOCKET, int, int, const char *, int);
  * SOCKET			socket(int, int, int);
+ * int				WSAGetLastError(void);
  * int				WSAIoctl(
  * 	SOCKET,
  * 	DWORD,
@@ -740,6 +746,39 @@ static int
 /*   /\   #==========================================================#   /\   */
 /*  //\\  |                    FINDING A PC NAME                     |  //\\  */
 /* '""""' #==========================================================# '""""' */
+
+/* CONNECT() TO INWAY_PORT THAT GIVES UP AFTER 4 SECONDS INSTEAD OF ABOUT 20 */
+int
+	NET_CONNECT(SOCKET S, uint32_t IP)
+{
+	struct sockaddr_in	A;
+	fd_set				W;
+	fd_set				E;
+	struct timeval		TV;
+	u_long				NB;
+	int					OK;
+
+	memset(&A, 0, sizeof(A));
+	A.sin_family = AF_INET;
+	A.sin_port = htons(INWAY_PORT);
+	A.sin_addr.s_addr = htonl(IP);
+	NB = 1;
+	ioctlsocket(S, FIONBIO, &NB);
+	OK = (connect(S, (struct sockaddr *)&A, sizeof(A)) == 0);
+	if (!OK && WSAGetLastError() == WSAEWOULDBLOCK)
+	{
+		FD_ZERO(&W);
+		FD_ZERO(&E);
+		FD_SET(S, &W);
+		FD_SET(S, &E);
+		TV.tv_sec = 4;
+		TV.tv_usec = 0;
+		OK = (select(0, NULL, &W, &E, &TV) == 1 && FD_ISSET(S, &W));
+	}
+	NB = 0;
+	ioctlsocket(S, FIONBIO, &NB);
+	return (OK);
+}
 
 /* 0 = OK, 1 = NOT AN ADDRESS OR A NAME, 2 = NO PC WITH THAT NAME WAS FOUND */
 int

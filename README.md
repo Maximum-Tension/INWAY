@@ -29,6 +29,7 @@ I made INWAY for the people around me who never used a PC in their lives. When t
   - [Inside the remote window](#inside-the-remote-window)
   - [Command line](#command-line)
   - [Shortcut .bat files](#shortcut-bat-files)
+  - [Through another PC](#through-another-pc)
   - [Servers: always on](#servers-always-on)
   - [Moving PCs from CONNECT to INWAY](#moving-pcs-from-connect-to-inway)
 - [Updates](#updates)
@@ -131,6 +132,7 @@ Copied files go over right away, into a temp folder on the other PC, and are put
 | `INWAY.exe -c 2.253 948248`    | Connect to `2.253` with that code. INWAY closes when the session ends |
 | `INWAY.exe -c 2.253`           | Same, but they click Accept                                           |
 | `INWAY.exe -c OFIS-PC 948248`  | Same, with the PC's name instead of its address                       |
+| `INWAY.exe -c A 482382 2.253`  | Reach `2.253` through PC `A` (see "Through another PC")               |
 | `INWAY.exe -install -p 938572` | Share this PC all the time, also on the lock screen (servers)         |
 | `INWAY.exe -install`           | Same, with a random code (or the one the server already has)          |
 | `INWAY.exe -uninstall`         | Remove that again                                                     |
@@ -154,6 +156,29 @@ INWAY.exe -c OFIS-PC 938572
 With the PC's **name** the shortcut keeps working when the router gives that PC a new address.
 
 Don't put `pause` at the end, or the black window stays open. When the `.bat` goes on after INWAY, the black window comes back by itself when the session ends.
+
+## Through another PC
+
+A PC you can reach (over Tailscale, for example) can **pass you on to the PCs next to it**, which you can't reach yourself. First the PC you can reach, then the one behind it, each with its code:
+
+```bat
+INWAY.exe -c 100.80.120.66 482382 2.253 948248
+```
+
+**Each code can be left out.** Then someone at that PC clicks **Accept**, like always:
+
+```bat
+INWAY.exe -c 100.80.120.66 2.253
+INWAY.exe -c 100.80.120.66 482382 2.253
+INWAY.exe -c 100.80.120.66 2.253 948248
+```
+
+* **The PC in between only passes the connection on.** It doesn't draw the screen a second time like INWAY inside INWAY does, so it is as fast as that link allows. It can still be controlled itself at the same time.
+* **The PC behind it is looked up there, on that network:** `2.253` is `192.168.2.253` of that network, and its name works too (`DESKTOP-31QN5QS`).
+* **The PC behind it** asks for its own code or Accept as usual. It sees the PC in between as the one controlling it.
+* Only local network addresses are passed on (`10.x`, `172.16-31.x`, `192.168.x`), so the PC in between is no door to the internet.
+* Up to 4 PCs in between: `-c A B C D`.
+* **The PC in between needs INWAY 20.26.11.24 or newer.** An older one takes the request for a wrong code.
 
 ## Servers: always on
 
@@ -183,7 +208,7 @@ The person at that PC still sees the small "2.253 is controlling this PC" window
 
 With **No**, INWAY copies itself to `%LOCALAPPDATA%\INWAY` and starts from your account's sign-in list, with no window. It can't use admin windows or the lock screen, and the first time Windows asks about the firewall like for any program. To make it the full server later, run the same `-install` again and click **Yes**: the full server replaces it.
 
-A server only lets people in with its code: nobody sits there to click Accept. After 5 wrong codes in a row it waits 30 seconds before it takes the next one.
+**A server takes the code, or asks for Accept.** Without the code, the person signed in at the server gets the same **Accept / Cancel** window as on a normal INWAY (the full server shows it with that person's normal rights, like the small window above). When the server is **locked, or nobody is signed in**, there is nobody to click, so then **only its code works**. After 5 wrong codes in a row it waits 30 seconds before it takes the next one.
 
 To change the code, run `-install` again with the new one after `-p`. To take it out: `INWAY.exe -uninstall`. It only asks for admin rights when the full server is installed.
 
@@ -318,6 +343,7 @@ Every sentence is in [`src/lang.c`](src/lang.c), one table per language. To add 
 * **The viewer** redraws only the part that changed, the fast way while moving and the smooth way once still.
 * **Mouse, keys and clipboard** go the other way on the same connection. Everything is a small message: a type, a size, the data.
 * **Copied files** are streamed as name, size and bytes. Names that try to leave the temp folder (`..`, `C:`, `\`) are refused.
+* **Through another PC**, the viewer sends "pass me on to `2.253`" instead of a code. After its own code or Accept, that PC connects to `2.253` and from then on only copies the bytes both ways.
 
 ---
 
@@ -327,6 +353,7 @@ Every sentence is in [`src/lang.c`](src/lang.c), one table per language. To add 
 
 * **The connection is not encrypted.** Someone who can watch the traffic on your network can see the screen and the keys, also a password typed on the lock screen. Use it at home or in your office, not on a public network.
 * **Who gets in:** only someone with the code, or someone you click **Accept** for. A wrong code costs 2 seconds, 5 in a row cost 30 seconds.
+* **Going through a PC** needs that PC's code or Accept first, and only reaches PCs on its local network. The PC behind it still asks for its own code or Accept.
 * **The firewall rule** made by `-install` only accepts PCs from the local network. The service also opens UDP `50506` for the local network only, so other INWAYs can find the PC by its name. It answers nothing but its own name.
 * **A server's code** is stored in its service settings, so an admin of that PC can read it. The normal-rights server keeps it in the sign-in list of that account.
 * **Admin rights stay inside the controlled PC.** The hidden admin copy only talks to INWAY on the same PC (`127.0.0.1`), and only after it sends a one-time secret.
