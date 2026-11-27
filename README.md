@@ -1,5 +1,6 @@
 <p align="center">
- <img width="256" height="276" alt="icon" src="IMG/IMG1.png"/>
+ <img width="256" height="276" alt="ICON" src="IMG/ICON.png"/>
+ <img width="1600" height="901" alt="CONTENT" src="IMG/CONTENT.png"/>
 </p>
 
 **INWAY** is a tiny peer-to-peer remote desktop for Windows PCs on the same local network: one EXE, no account, no cloud, nothing to install.
