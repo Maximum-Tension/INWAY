@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/28 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -18,6 +18,8 @@
 # FOLDERS ARE SENT RIGHT AWAY TOO, INTO A FOLDER IN TEMP ON THE OTHER PC, AND
 # WHEN THE LAST BYTE ARRIVES THEY ARE PUT ON ITS CLIPBOARD. CTRL + V THEN PASTES
 # THEM LIKE NORMAL FILES. A NEW COPY CANCELS A COPY STILL ON ITS WAY.
+# CLIP_FLUSH() SENDS A COPY THAT IS STILL WAITING, RIGHT BEFORE CTRL + V GOES
+# TO THE OTHER PC.
 # FILES GO AS A SIMPLE STREAM (NAME, SIZE, BYTES), NOT AS A ZIP: BOTH ENDS ARE
 # INWAY AND A LAN DOES NOT NEED COMPRESSION. NAMES THAT TRY TO LEAVE THE TEMP
 # FOLDER ("..", "C:", "\\") ARE REFUSED.
@@ -53,6 +55,7 @@ extern void				CLIP_RECEIVE(
 	const uint8_t *DATA,
 	uint32_t SIZE
 );
+extern void				CLIP_FLUSH(struct S_CLIP *CLIP);
 extern void				CLIP_STOP(struct S_CLIP *CLIP);
 
 #endif /* !CLIPBOARD_H */

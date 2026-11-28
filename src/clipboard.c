@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/17 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/28 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -17,7 +17,13 @@
 # ALSO PUTS THINGS ON IT (THE CLIPBOARD WANTS A WINDOW). FILES ARE SENT BY ONE
 # MORE THREAD, SO A BIG COPY NEVER STOPS THE SCREEN OR THE MOUSE.
 # WHEN THIS SIDE PUTS SOMETHING ON THE CLIPBOARD, IT REMEMBERS THE CLIPBOARD'S
-# SEQUENCE NUMBER, SO THAT CHANGE IS NOT SENT BACK AGAIN.
+# SEQUENCE NUMBER, SO THAT CHANGE IS NOT SENT BACK AGAIN. IT REMEMBERS THE TEXT
+# TOO: CLIPBOARD HISTORY, ANYDESK AND OTHER CLIPBOARD TOOLS TOUCH THE CLIPBOARD
+# AGAIN RIGHT AFTER, AND THAT SAME TEXT MUST NOT GO BACK AND OVERWRITE A NEWER
+# COPY ON THE OTHER PC.
+# NOTHING IS DROPPED QUIETLY ANY MORE: A BUSY CLIPBOARD IS TRIED AGAIN A FEW
+# TIMES, AND CTRL + V NEVER OVERTAKES THE TEXT IT SHOULD PASTE (CLIP_FLUSH ON
+# THE SENDING SIDE, THE NETWORK THREAD WAITS FOR SET_TEXT ON THE OTHER).
 */
 
 /* **************************** [v] INCLUDES [v] **************************** */
@@ -62,6 +68,7 @@
  * #define OPEN_EXISTING
  * #define S_OK
  * #define SMTO_ABORTIFHUNG
+ * #define SMTO_NORMAL
  * #define TRUE
  * #define WINAPI
  * #define WM_CLIPBOARDUPDATE
@@ -168,6 +175,7 @@
  * 	UINT,
  * 	PDWORD_PTR
  * );
+ * BOOL		ResetEvent(HANDLE);
  * HANDLE	SetClipboardData(UINT, HANDLE);
  * BOOL		SetEvent(HANDLE);
  * BOOL		SetFileAttributesW(LPCWSTR, DWORD);
@@ -276,8 +284,11 @@
 
 #define WM_CLIP_SET_TEXT (WM_APP + 1) /* LPARAM = WCHAR *, FREED */
 #define WM_CLIP_SET_FILES (WM_APP + 2) /* LPARAM = LIST, FREED */
+#define WM_CLIP_FLUSH (WM_APP + 3) /* CLIP_FLUSH(): READ A WAITING CHANGE NOW */
 #define CLIP_TIMER 1 /* READS THE CLIPBOARD A MOMENT AFTER IT CHANGED */
-#define CLIP_SETTLE_MS 150
+#define CLIP_SETTLE_MS 100
+#define CLIP_RETRY_MS 200 /* THE CLIPBOARD WAS BUSY: LOOK AGAIN THIS SOON */
+#define CLIP_RETRIES 10 /* AND THIS MANY TIMES, THEN GIVE UP ON THAT COPY */
 #define CLIP_CLASS L"INWAY_CLIP"
 
 struct	S_CLIP
@@ -288,6 +299,11 @@ struct	S_CLIP
 	HANDLE			READY;
 	HWND			WINDOW;
 	volatile LONG	IGNORE_SEQ; /* OUR OWN LAST CHANGE */
+	uint64_t		LAST_IN; /* HASH OF THE OTHER PC'S LAST TEXT, 0 = NONE */
+	int				PENDING; /* A CHANGE WAITS FOR CLIP_TIMER */
+	LONG			SEEN_SEQ; /* THE SEQUENCE NUMBER LOOKED AT LAST */
+	int				RETRY; /* HOW OFTEN THE CLIPBOARD WAS BUSY THIS TIME */
+	HANDLE			SET_DONE; /* SET_TEXT() IS DONE: THE NETWORK THREAD WAITS */
 	/* OUTGOING FILES */
 	HANDLE			SENDER;
 	volatile LONG	CANCEL;
@@ -325,6 +341,24 @@ static void
 	TEXT_ADD(&T, "{0}");
 	NOTIFY("%s", T.DATA);
 	TEXT_FREE(&T);
+}
+
+/* FNV-1A OF A TEXT: ENOUGH TO KNOW IT AGAIN. NEVER 0, THAT MEANS "NONE" */
+static uint64_t
+	TEXT_HASH(const WCHAR *TEXT)
+{
+	const uint8_t	*P;
+	uint64_t		H;
+	size_t			N;
+
+	H = 0XCBF29CE484222325ULL;
+	P = (const uint8_t *)TEXT;
+	N = (size_t)lstrlenW(TEXT) * sizeof(WCHAR);
+	while (N--)
+	{
+		H = (H ^ *P++) * 0X100000001B3ULL;
+	}
+	return (H | 1);
 }
 
 /* "A\B" + "C" -> NEW MEMORY "A\B\C" */
@@ -508,12 +542,13 @@ static void
 /* .,,,,. #==========================================================# .,,,,. */
 /*  \\//  |             PUTTING THINGS ON THE CLIPBOARD              |  \\//  */
 /*   \/   #==========================================================#   \/   */
+/* TRIES X 25 MS: ANOTHER PROGRAM MAY HAVE IT OPEN */
 static int
-	OPEN_CLIPBOARD(HWND WINDOW)
+	OPEN_CLIPBOARD(HWND WINDOW, int TRIES)
 {
 	int	I;
 
-	for (I = 0; I < 20; ++I) /* ANOTHER PROGRAM MAY HAVE IT OPEN */
+	for (I = 0; I < TRIES; ++I)
 	{
 		if (OpenClipboard(WINDOW))
 		{
@@ -540,7 +575,8 @@ static void
 	P = GlobalLock(MEMORY);
 	memcpy(P, TEXT, BYTES);
 	GlobalUnlock(MEMORY);
-	if (!OPEN_CLIPBOARD(C->WINDOW))
+	C->LAST_IN = TEXT_HASH(TEXT);
+	if (!OPEN_CLIPBOARD(C->WINDOW, 80)) /* UP TO 2 SECONDS: IT MUST ARRIVE */
 	{
 		GlobalFree(MEMORY);
 		return ;
@@ -592,7 +628,8 @@ static void
 	E = (DWORD *)GlobalLock(EFFECT);
 	*E = 1; /* DROPEFFECT_COPY: PASTE COPIES, IT DOES NOT MOVE */
 	GlobalUnlock(EFFECT);
-	if (!OPEN_CLIPBOARD(C->WINDOW))
+	C->LAST_IN = 0;
+	if (!OPEN_CLIPBOARD(C->WINDOW, 80))
 	{
 		GlobalFree(DROP);
 		GlobalFree(EFFECT);
@@ -960,6 +997,21 @@ static int
 	return (P != LIST);
 }
 
+/* THE CLIPBOARD WAS BUSY OR NOT READY: LOOK AGAIN SOON, A FEW TIMES */
+static void
+	RETRY_LATER(struct S_CLIP *C)
+{
+	if (++C->RETRY <= CLIP_RETRIES)
+	{
+		C->PENDING = 1;
+		SetTimer(C->WINDOW, CLIP_TIMER, CLIP_RETRY_MS, NULL);
+	}
+	else
+	{
+		C->RETRY = 0;
+	}
+}
+
 /* SOMETHING WAS COPIED ON THIS PC */
 static void
 	CLIPBOARD_CHANGED(struct S_CLIP *C)
@@ -972,12 +1024,14 @@ static void
 	size_t		CHARS;
 	int			FILES;
 
-	if ((LONG)GetClipboardSequenceNumber() == C->IGNORE_SEQ)
+	C->SEEN_SEQ = (LONG)GetClipboardSequenceNumber();
+	if (C->SEEN_SEQ == C->IGNORE_SEQ)
 	{
 		return ; /* WE PUT IT THERE OURSELVES */
 	}
-	if (!OPEN_CLIPBOARD(C->WINDOW))
+	if (!OPEN_CLIPBOARD(C->WINDOW, 20))
 	{
+		RETRY_LATER(C);
 		return ;
 	}
 	COPY = NULL;
@@ -1001,9 +1055,28 @@ static void
 		}
 		LIST = DATA ? DROP_LIST((HDROP)DATA) : NULL;
 	}
-	else if (IsClipboardFormatAvailable(CF_UNICODETEXT) &&
-		(DATA = GetClipboardData(CF_UNICODETEXT)) != NULL)
+	else if (IsClipboardFormatAvailable(CF_UNICODETEXT))
 	{
+		DATA = GetClipboardData(CF_UNICODETEXT);
+		OWNER = GetClipboardOwner();
+		if (!DATA && OWNER && SendMessageTimeoutW(
+			OWNER,
+			WM_NULL,
+			0,
+			0,
+			SMTO_ABORTIFHUNG,
+			3000,
+			NULL
+		))
+		{
+			DATA = GetClipboardData(CF_UNICODETEXT); /* NOW IT IS MADE */
+		}
+		if (!DATA)
+		{
+			CloseClipboard();
+			RETRY_LATER(C); /* THE PROGRAM THAT COPIED IT WAS NOT READY */
+			return ;
+		}
 		TEXT = (const WCHAR *)GlobalLock(DATA);
 		if (TEXT)
 		{
@@ -1020,6 +1093,7 @@ static void
 		}
 	}
 	CloseClipboard();
+	C->RETRY = 0;
 	if (LIST && OUR_OWN_COPY(C, LIST))
 	{
 		free(LIST); /* PASTING IT TOUCHED THE CLIPBOARD: DO NOT SEND IT BACK */
@@ -1036,11 +1110,17 @@ static void
 	}
 	if (LIST)
 	{
+		C->LAST_IN = 0;
 		START_SENDER(C, LIST);
+	}
+	else if (COPY && TEXT_HASH(COPY) == C->LAST_IN)
+	{
+		free(COPY); /* THE TEXT THE OTHER PC JUST SENT, TOUCHED AGAIN HERE */
 	}
 	else if (COPY)
 	{
 		CANCEL_SENDER(C);
+		C->LAST_IN = 0;
 		LINK_SEND(
 			C->LINK,
 			MSG_CLIP_TEXT,
@@ -1063,6 +1143,11 @@ static LRESULT CALLBACK
 	{
 		case (WM_CLIPBOARDUPDATE):
 			/* WAIT A MOMENT: A COPY OFTEN CHANGES THE CLIPBOARD A FEW TIMES */
+			if (C)
+			{
+				C->PENDING = 1;
+				C->RETRY = 0;
+			}
 			SetTimer(WINDOW, CLIP_TIMER, CLIP_SETTLE_MS, NULL);
 			return (0);
 		case (WM_TIMER):
@@ -1071,14 +1156,29 @@ static LRESULT CALLBACK
 				KillTimer(WINDOW, CLIP_TIMER);
 				if (C)
 				{
+					C->PENDING = 0;
 					CLIPBOARD_CHANGED(C);
 				}
+			}
+			return (0);
+		case (WM_CLIP_FLUSH):
+			/*
+			# A SENT MESSAGE COMES BEFORE THE WM_CLIPBOARDUPDATE STILL IN THE
+			# QUEUE, SO THE SEQUENCE NUMBER TELLS IF SOMETHING NEW IS THERE.
+			*/
+			if (C && (C->PENDING ||
+				(LONG)GetClipboardSequenceNumber() != C->SEEN_SEQ))
+			{
+				KillTimer(WINDOW, CLIP_TIMER);
+				C->PENDING = 0;
+				CLIPBOARD_CHANGED(C);
 			}
 			return (0);
 		case (WM_CLIP_SET_TEXT):
 			if (C)
 			{
 				SET_TEXT(C, (const WCHAR *)LP);
+				SetEvent(C->SET_DONE);
 			}
 			free((void *)LP);
 			return (0);
@@ -1133,6 +1233,8 @@ static DWORD WINAPI
 	);
 	if (C->WINDOW)
 	{
+		/* WHAT WAS COPIED BEFORE THE SESSION STAYS ON THIS PC */
+		C->SEEN_SEQ = (LONG)GetClipboardSequenceNumber();
 		SetWindowLongPtrW(C->WINDOW, GWLP_USERDATA, (LONG_PTR)C);
 		AddClipboardFormatListener(C->WINDOW);
 	}
@@ -1280,6 +1382,27 @@ static void
 	TELL(STR_C_GOT, C->WHO);
 }
 
+/*
+# CTRL + V IS ABOUT TO GO TO THE OTHER PC, BUT A COPY MADE A MOMENT AGO MAY
+# STILL WAIT FOR CLIP_TIMER: SEND IT NOW, SO IT ARRIVES BEFORE THE KEY DOES.
+*/
+void
+	CLIP_FLUSH(struct S_CLIP *C)
+{
+	if (C && C->WINDOW)
+	{
+		SendMessageTimeoutW(
+			C->WINDOW,
+			WM_CLIP_FLUSH,
+			0,
+			0,
+			SMTO_NORMAL,
+			1500,
+			NULL
+		);
+	}
+}
+
 /* CALLED BY THE THREAD THAT READS THE CONNECTION */
 void
 	CLIP_RECEIVE(
@@ -1311,10 +1434,17 @@ void
 				return ;
 			}
 			memcpy(TEXT, DATA, (SIZE / sizeof(WCHAR)) * sizeof(WCHAR));
+			ResetEvent(C->SET_DONE);
 			if (!PostMessageW(C->WINDOW, WM_CLIP_SET_TEXT, 0, (LPARAM)TEXT))
 			{
 				free(TEXT);
+				return ;
 			}
+			/*
+			# CTRL + V MAY COME RIGHT BEHIND IT ON THIS SAME CONNECTION: IT IS
+			# NOT PLAYED BEFORE THE TEXT IS ON THE CLIPBOARD.
+			*/
+			WaitForSingleObject(C->SET_DONE, 3000);
 			return ;
 		case (MSG_CLIP_BEGIN):
 			GOT_BEGIN(C, ID);
@@ -1387,12 +1517,18 @@ struct S_CLIP
 	swprintf(C->BASE, MAX_PATH, L"%ls\\INWAY-Clipboard", ROOT);
 	CLEAN_OLD(C->BASE);
 	C->READY = CreateEventW(NULL, TRUE, FALSE, NULL);
-	C->THREAD = CreateThread(NULL, 0, WINDOW_THREAD, C, 0, NULL);
-	if (!C->READY || !C->THREAD)
+	C->SET_DONE = CreateEventW(NULL, TRUE, FALSE, NULL);
+	C->THREAD = C->READY && C->SET_DONE ?
+		CreateThread(NULL, 0, WINDOW_THREAD, C, 0, NULL) : NULL;
+	if (!C->THREAD)
 	{
 		if (C->READY)
 		{
 			CloseHandle(C->READY);
+		}
+		if (C->SET_DONE)
+		{
+			CloseHandle(C->SET_DONE);
 		}
 		free(C);
 		return (NULL);
@@ -1426,6 +1562,10 @@ void
 	if (C->READY)
 	{
 		CloseHandle(C->READY);
+	}
+	if (C->SET_DONE)
+	{
+		CloseHandle(C->SET_DONE);
 	}
 	CLOSE_IN_FILE(C);
 	TEXT_FREE(&C->IN_TOP);

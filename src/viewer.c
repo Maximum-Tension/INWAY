@@ -8,7 +8,7 @@
 # +.....................++.....................+ #   :!:: :!:!1:!:!::1:::!!!:  #
 # : C - Maximum Tension :: Create - 2026/11/17 : #   ::!::!!1001010!:!11!!::   #
 # :---------------------::---------------------: #   :!1!!11000000000011!!:    #
-# : License - GPL-3.0   :: Update - 2026/11/24 : #    ::::!!!1!!1!!!1!!!::     #
+# : License - GPL-3.0   :: Update - 2026/11/28 : #    ::::!!!1!!1!!!1!!!::     #
 # +.....................++.....................+ #       ::::!::!:::!::::      #
 \******************************************************************************/
 
@@ -98,9 +98,11 @@
  * #define TRUE
  * #define VK_CONTROL
  * #define VK_END
+ * #define VK_INSERT
  * #define VK_LWIN
  * #define VK_MENU
  * #define VK_RWIN
+ * #define VK_SHIFT
  * #define WH_KEYBOARD_LL
  * #define WINAPI
  * #define WM_APP
@@ -325,6 +327,7 @@
  * 	const uint8_t *,
  * 	uint32_t
  * );
+ * void				CLIP_FLUSH(struct S_CLIP *);
  * struct S_CLIP	*CLIP_START(struct S_LINK *, const char *);
  * void				CLIP_STOP(struct S_CLIP *);
  */
@@ -545,6 +548,12 @@ static LRESULT CALLBACK
 					SEND_INPUT_MSG(IN_SAS, 0, 0, 0);
 				}
 				return (0);
+			}
+			/* CTRL + V, SHIFT + INSERT: A COPY MADE A MOMENT AGO GOES FIRST */
+			if (DOWN && ((WP == 'V' && GetKeyState(VK_CONTROL) < 0) ||
+				(WP == VK_INSERT && GetKeyState(VK_SHIFT) < 0)))
+			{
+				CLIP_FLUSH(G__CLIP__);
 			}
 			SEND_INPUT_MSG(IN_KEY, (int)WP, DOWN, (int)((LP >> 24) & 1));
 			return (0);

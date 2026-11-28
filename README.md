@@ -122,6 +122,8 @@ The other screen opens in a new window. Close that window to stop.
 | Copy and paste         | `CTRL` + `C` on one PC, `CTRL` + `V` on the other. Text, files, folders |
 | Stop                   | Close the window, or press `CTRL` + `C` in the black window             |
 
+Copied text goes over the moment you copy it, and **`CTRL` + `V` on the other PC always waits for it**, also when one INWAY runs inside another. Something copied **before** you connected stays on its PC: copy it again.
+
 Copied files go over right away, into a temp folder on the other PC, and are put on its clipboard when the last byte arrives. Big copies take a moment: wait for the "ready to paste" line before you paste. One copy can be up to 4 GB.
 
 ## Command line
